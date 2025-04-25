@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const userController = require('../controllers/userController');
-const auth = require('../../middleware/auth');
+const auth = require('../middleware/auth');
 const { handleMulterUpload } = require('../utils/multerConfig');
 
 // Add request logging middleware
