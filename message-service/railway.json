@@ -1,7 +1,12 @@
 {
   "schema": 2,
   "build": {
-    "builder": "NIXPACKS"
+    "builder": "DOCKERFILE",
+    "watchPatterns": [
+      "**/*.js",
+      "package.json",
+      "Dockerfile"
+    ]
   },
   "deploy": {
     "startCommand": "node server.js",
