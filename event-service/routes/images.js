@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const imageController = require('../controllers/imageController');
 const { handleMulterUpload } = require('../utils/multerConfig');
-const auth = require('../../middleware/auth');
+const auth = require('../middleware/auth');
 
 // Add request logging middleware
 router.use((req, res, next) => {

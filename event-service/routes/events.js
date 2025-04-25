@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const eventController = require('../controllers/eventController');
-const auth = require('../../middleware/auth');
+const auth = require('../middleware/auth');
 const Event = require('../models/Event');
 
 // Add request logging middleware
