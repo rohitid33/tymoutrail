@@ -1,12 +1,12 @@
-FROM node:18-alpine
+FROM node:18
 
 WORKDIR /app
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
+# Copy only package files first for better caching
+COPY package.json ./
 
-# Install dependencies using npm install instead of npm ci
-RUN npm install
+# Install dependencies with --no-optional flag to skip optional dependencies
+RUN npm install --no-optional --production
 
 # Copy the rest of the application
 COPY . .
