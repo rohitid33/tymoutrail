@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query, validationResult } = require('express-validator');
-const auth = require('../../middleware/auth');
+const auth = require('../middleware/auth');
 const discoveryController = require('../controllers/discoveryController');
 
 // @route   GET /discovery/city
