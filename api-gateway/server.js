@@ -7,22 +7,35 @@ const dotenv = require('dotenv');
 const session = require('express-session');
 
 // Load environment variables
-dotenv.config({ path: '../.env' });
+dotenv.config();
 
 // Following Single Responsibility Principle - server.js only handles server setup and routing
 const app = express();
-const PORT = process.env.API_GATEWAY_PORT || 3000;
+const PORT = process.env.PORT || process.env.API_GATEWAY_PORT || 3000;
 
-// Get service ports from environment variables
-const USER_SERVICE_PORT = process.env.USER_SERVICE_PORT || 3001;
-const EVENT_SERVICE_PORT = process.env.EVENT_SERVICE_PORT || 3002;
-const DISCOVERY_SERVICE_PORT = process.env.DISCOVERY_SERVICE_PORT || 3003;
-const REQUEST_SERVICE_PORT = process.env.REQUEST_SERVICE_PORT || 3004;
-const NOTIFICATION_SERVICE_PORT = process.env.NOTIFICATION_SERVICE_PORT || 3005;
-const FEEDBACK_SERVICE_PORT = process.env.FEEDBACK_SERVICE_PORT || 3006;
-const SAFETY_SERVICE_PORT = process.env.SAFETY_SERVICE_PORT || 3007;
-const PAYMENT_SERVICE_PORT = process.env.PAYMENT_SERVICE_PORT || 3008;
-const PARTNERSHIP_SERVICE_PORT = process.env.PARTNERSHIP_SERVICE_PORT || 3009;
+// Service URLs - these will be set as environment variables in Railway
+// Default to localhost for local development
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || `http://localhost:${process.env.USER_SERVICE_PORT || 3001}`;
+const EVENT_SERVICE_URL = process.env.EVENT_SERVICE_URL || `http://localhost:${process.env.EVENT_SERVICE_PORT || 3002}`;
+const DISCOVERY_SERVICE_URL = process.env.DISCOVERY_SERVICE_URL || `http://localhost:${process.env.DISCOVERY_SERVICE_PORT || 3003}`;
+const REQUEST_SERVICE_URL = process.env.REQUEST_SERVICE_URL || `http://localhost:${process.env.REQUEST_SERVICE_PORT || 3004}`;
+const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || `http://localhost:${process.env.NOTIFICATION_SERVICE_PORT || 3005}`;
+const FEEDBACK_SERVICE_URL = process.env.FEEDBACK_SERVICE_URL || `http://localhost:${process.env.FEEDBACK_SERVICE_PORT || 3006}`;
+const SAFETY_SERVICE_URL = process.env.SAFETY_SERVICE_URL || `http://localhost:${process.env.SAFETY_SERVICE_PORT || 3007}`;
+const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || `http://localhost:${process.env.PAYMENT_SERVICE_PORT || 3008}`;
+const PARTNERSHIP_SERVICE_URL = process.env.PARTNERSHIP_SERVICE_URL || `http://localhost:${process.env.PARTNERSHIP_SERVICE_PORT || 3009}`;
+
+// Log service URLs at startup
+console.log('Service URLs:');
+console.log(`User Service: ${USER_SERVICE_URL}`);
+console.log(`Event Service: ${EVENT_SERVICE_URL}`);
+console.log(`Discovery Service: ${DISCOVERY_SERVICE_URL}`);
+console.log(`Request Service: ${REQUEST_SERVICE_URL}`);
+console.log(`Notification Service: ${NOTIFICATION_SERVICE_URL}`);
+console.log(`Feedback Service: ${FEEDBACK_SERVICE_URL}`);
+console.log(`Safety Service: ${SAFETY_SERVICE_URL}`);
+console.log(`Payment Service: ${PAYMENT_SERVICE_URL}`);
+console.log(`Partnership Service: ${PARTNERSHIP_SERVICE_URL}`);
 
 // Middleware
 app.use(
@@ -37,33 +50,51 @@ app.use(
   })
 );
 
+// CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3010',
+  origin: process.env.FRONTEND_URL || '*',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
 }));
 
 app.use(helmet()); // Security headers
 app.use(express.json()); // Parse JSON bodies
 app.use(morgan('dev')); // Logging
 
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'api-gateway',
+    services: {
+      user: USER_SERVICE_URL,
+      event: EVENT_SERVICE_URL,
+      discovery: DISCOVERY_SERVICE_URL,
+      request: REQUEST_SERVICE_URL,
+      notification: NOTIFICATION_SERVICE_URL,
+      feedback: FEEDBACK_SERVICE_URL,
+      safety: SAFETY_SERVICE_URL,
+      payment: PAYMENT_SERVICE_URL,
+      partnership: PARTNERSHIP_SERVICE_URL
+    }
+  });
+});
+
 // Add request logging middleware
 app.use((req, res, next) => {
-  console.log(`[API Gateway:Step 1] Received ${req.method} request to ${req.url}`);
-  console.log(`[API Gateway:Step 2] Headers:`, req.headers);
-  console.log(`[API Gateway:Step 3] Body:`, req.body);
+  console.log(`[API Gateway] Received ${req.method} request to ${req.url}`);
   next();
 });
 
 // Routes to microservices
 app.use('/api/users', createProxyMiddleware({ 
-  target: `http://localhost:${USER_SERVICE_PORT}`, 
+  target: USER_SERVICE_URL, 
   changeOrigin: true,
   pathRewrite: {'^/api/users': ''},
   // Enable cookies for Google OAuth
   cookieDomainRewrite: {
-    '*': 'localhost'
+    '*': process.env.COOKIE_DOMAIN || 'localhost'
   },
   // Configure proxy options
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
@@ -76,10 +107,7 @@ app.use('/api/users', createProxyMiddleware({
     return proxyReqOpts;
   },
   onProxyReq: (proxyReq, req, res) => {
-    console.log(`[API Gateway:Step 4] Proxying request to User Service: ${req.method} ${req.url}`);
-    console.log(`[API Gateway:Step 5] Proxy Request Headers:`, proxyReq.getHeaders());
-    console.log(`[API Gateway:Step 5.1] Proxy Request Body:`, req.body);
-    console.log(`[API Gateway:Step 5.2] Target URL: http://localhost:${USER_SERVICE_PORT}${req.url.replace('/api/users', '')}`);
+    console.log(`[API Gateway] Proxying request to User Service: ${req.method} ${req.url}`);
     
     // Ensure body is properly forwarded
     if (req.body) {
@@ -89,28 +117,7 @@ app.use('/api/users', createProxyMiddleware({
     }
   },
   onProxyRes: (proxyRes, req, res) => {
-    console.log(`[API Gateway:Step 6] Received response from User Service:`, {
-      statusCode: proxyRes.statusCode,
-      headers: proxyRes.headers
-    });
-    
-    // Log response body if available
-    const chunks = [];
-    proxyRes.on('data', (chunk) => chunks.push(chunk));
-    proxyRes.on('end', () => {
-      const body = Buffer.concat(chunks).toString();
-      console.log(`[API Gateway:Step 6.1] Response Body:`, body);
-    });
-    
-    // Log all proxied requests for debugging OAuth issues
-    if (req.url.includes('/auth/')) {
-      console.log(`[API Gateway:Step 7] Auth request: ${req.method} ${req.url}`);
-      console.log(`[API Gateway:Step 8] Response status: ${proxyRes.statusCode}`);
-      
-      if (proxyRes.headers.location) {
-        console.log(`[API Gateway:Step 9] Redirect location: ${proxyRes.headers.location}`);
-      }
-    }
+    console.log(`[API Gateway] Received response from User Service: ${proxyRes.statusCode}`);
     
     // Handle redirects from the user service
     if (proxyRes.headers.location) {
@@ -125,51 +132,39 @@ app.use('/api/users', createProxyMiddleware({
     }
   },
   onError: (err, req, res) => {
-    console.error(`[API Gateway:Step 10] Proxy Error:`, err);
-    console.error(`[API Gateway:Step 10.1] Error Details:`, {
-      message: err.message,
-      code: err.code,
-      stack: err.stack
-    });
-    console.error(`[API Gateway:Step 10.2] Request Details:`, {
-      method: req.method,
-      url: req.url,
-      headers: req.headers
-    });
+    console.error(`[API Gateway] Proxy Error:`, err.message);
     res.status(500).json({ error: 'Proxy Error', details: err.message });
   }
 }));
 
 app.use('/api/events', createProxyMiddleware({ 
-  target: `http://localhost:${EVENT_SERVICE_PORT}`, 
+  target: EVENT_SERVICE_URL, 
   changeOrigin: true,
   pathRewrite: {'^/api/events': '/events'},
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-    // Maintain keep-alive connection
     proxyReqOpts.headers['connection'] = 'keep-alive';
-    // Ensure proper content-type is set
     if (srcReq.body) {
       proxyReqOpts.headers['content-type'] = 'application/json';
     }
     return proxyReqOpts;
   },
   onProxyReq: (proxyReq, req, res) => {
-    console.log(`[API Gateway:Step 4] Proxying request to Event Service: ${req.method} ${req.url}`);
-    console.log(`[API Gateway:Step 5] Proxy Request Headers:`, proxyReq.getHeaders());
-    console.log(`[API Gateway:Step 5.1] Proxy Request Body:`, req.body);
-    console.log(`[API Gateway:Step 5.2] Target URL: http://localhost:${EVENT_SERVICE_PORT}${req.url.replace('/api/events', '')}`);
+    console.log(`[API Gateway] Proxying request to Event Service: ${req.method} ${req.url}`);
     
-    // Ensure body is properly forwarded
     if (req.body) {
       const bodyData = JSON.stringify(req.body);
       proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
       proxyReq.write(bodyData);
     }
   },
+  onError: (err, req, res) => {
+    console.error(`[API Gateway] Proxy Error:`, err.message);
+    res.status(500).json({ error: 'Proxy Error', details: err.message });
+  }
 }));
 
 app.use('/api/circles', createProxyMiddleware({ 
-  target: `http://localhost:${EVENT_SERVICE_PORT}`, 
+  target: EVENT_SERVICE_URL, 
   changeOrigin: true,
   pathRewrite: {'^/api/circles': '/circles'},
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
@@ -180,10 +175,7 @@ app.use('/api/circles', createProxyMiddleware({
     return proxyReqOpts;
   },
   onProxyReq: (proxyReq, req, res) => {
-    console.log(`[API Gateway:Step 4] Proxying request to Event Service (Circles): ${req.method} ${req.url}`);
-    console.log(`[API Gateway:Step 5] Proxy Request Headers:`, proxyReq.getHeaders());
-    console.log(`[API Gateway:Step 5.1] Proxy Request Body:`, req.body);
-    console.log(`[API Gateway:Step 5.2] Target URL: http://localhost:${EVENT_SERVICE_PORT}${req.url.replace('/api/circles', '')}`);
+    console.log(`[API Gateway] Proxying request to Event Service (Circles): ${req.method} ${req.url}`);
     
     if (req.body) {
       const bodyData = JSON.stringify(req.body);
@@ -191,11 +183,15 @@ app.use('/api/circles', createProxyMiddleware({
       proxyReq.write(bodyData);
     }
   },
+  onError: (err, req, res) => {
+    console.error(`[API Gateway] Proxy Error:`, err.message);
+    res.status(500).json({ error: 'Proxy Error', details: err.message });
+  }
 }));
 
 // Discovery Service Routes
 app.use(['/api/discovery', '/api/search', '/api/recommendations'], createProxyMiddleware({ 
-  target: `http://localhost:${DISCOVERY_SERVICE_PORT}`, 
+  target: DISCOVERY_SERVICE_URL, 
   changeOrigin: true,
   pathRewrite: {
     '^/api/discovery': '/discovery',
@@ -210,68 +206,126 @@ app.use(['/api/discovery', '/api/search', '/api/recommendations'], createProxyMi
     return proxyReqOpts;
   },
   onProxyReq: (proxyReq, req, res) => {
-    console.log(`[API Gateway:Step 4] Proxying request to Discovery Service: ${req.method} ${req.url}`);
-    console.log(`[API Gateway:Step 5] Proxy Request Headers:`, proxyReq.getHeaders());
-    console.log(`[API Gateway:Step 5.1] Proxy Request Body:`, req.body);
-    console.log(`[API Gateway:Step 5.2] Target URL: http://localhost:${DISCOVERY_SERVICE_PORT}${req.url.replace(/^\/api\/(discovery|search|recommendations)/, '/$1')}`);
+    console.log(`[API Gateway] Proxying request to Discovery Service: ${req.method} ${req.url}`);
     
     if (req.body) {
       const bodyData = JSON.stringify(req.body);
       proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
       proxyReq.write(bodyData);
     }
+  },
+  onError: (err, req, res) => {
+    console.error(`[API Gateway] Proxy Error:`, err.message);
+    res.status(500).json({ error: 'Proxy Error', details: err.message });
   }
 }));
 
 app.use('/api/requests', createProxyMiddleware({ 
-  target: `http://localhost:${REQUEST_SERVICE_PORT}`, 
+  target: REQUEST_SERVICE_URL, 
   changeOrigin: true,
-  pathRewrite: {'^/api/requests': ''}
+  pathRewrite: {'^/api/requests': '/api/requests'},
+  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+    proxyReqOpts.headers['connection'] = 'keep-alive';
+    if (srcReq.body) {
+      proxyReqOpts.headers['content-type'] = 'application/json';
+    }
+    return proxyReqOpts;
+  },
+  onProxyReq: (proxyReq, req, res) => {
+    console.log(`[API Gateway] Proxying request to Request Service: ${req.method} ${req.url}`);
+    
+    if (req.body) {
+      const bodyData = JSON.stringify(req.body);
+      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+      proxyReq.write(bodyData);
+    }
+  },
+  onError: (err, req, res) => {
+    console.error(`[API Gateway] Proxy Error:`, err.message);
+    res.status(500).json({ error: 'Proxy Error', details: err.message });
+  }
 }));
 
 app.use('/api/notifications', createProxyMiddleware({ 
-  target: `http://localhost:${NOTIFICATION_SERVICE_PORT}`, 
+  target: NOTIFICATION_SERVICE_URL, 
   changeOrigin: true,
-  pathRewrite: {'^/api/notifications': ''}
+  pathRewrite: {'^/api/notifications': '/api/notifications'},
+  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+    proxyReqOpts.headers['connection'] = 'keep-alive';
+    if (srcReq.body) {
+      proxyReqOpts.headers['content-type'] = 'application/json';
+    }
+    return proxyReqOpts;
+  },
+  onProxyReq: (proxyReq, req, res) => {
+    console.log(`[API Gateway] Proxying request to Notification Service: ${req.method} ${req.url}`);
+    
+    if (req.body) {
+      const bodyData = JSON.stringify(req.body);
+      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+      proxyReq.write(bodyData);
+    }
+  },
+  onError: (err, req, res) => {
+    console.error(`[API Gateway] Proxy Error:`, err.message);
+    res.status(500).json({ error: 'Proxy Error', details: err.message });
+  }
 }));
 
 app.use('/api/feedback', createProxyMiddleware({ 
-  target: `http://localhost:${FEEDBACK_SERVICE_PORT}`, 
+  target: FEEDBACK_SERVICE_URL, 
   changeOrigin: true,
-  pathRewrite: {'^/api/feedback': ''}
+  pathRewrite: {'^/api/feedback': '/api/feedback'},
+  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+    proxyReqOpts.headers['connection'] = 'keep-alive';
+    if (srcReq.body) {
+      proxyReqOpts.headers['content-type'] = 'application/json';
+    }
+    return proxyReqOpts;
+  },
+  onProxyReq: (proxyReq, req, res) => {
+    console.log(`[API Gateway] Proxying request to Feedback Service: ${req.method} ${req.url}`);
+    
+    if (req.body) {
+      const bodyData = JSON.stringify(req.body);
+      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+      proxyReq.write(bodyData);
+    }
+  },
+  onError: (err, req, res) => {
+    console.error(`[API Gateway] Proxy Error:`, err.message);
+    res.status(500).json({ error: 'Proxy Error', details: err.message });
+  }
 }));
 
-app.use('/api/safety', createProxyMiddleware({ 
-  target: `http://localhost:${SAFETY_SERVICE_PORT}`, 
-  changeOrigin: true,
-  pathRewrite: {'^/api/safety': ''}
-}));
-
-app.use('/api/payments', createProxyMiddleware({ 
-  target: `http://localhost:${PAYMENT_SERVICE_PORT}`, 
-  changeOrigin: true,
-  pathRewrite: {'^/api/payments': ''}
-}));
-
-app.use('/api/partnerships', createProxyMiddleware({ 
-  target: `http://localhost:${PARTNERSHIP_SERVICE_PORT}`, 
-  changeOrigin: true,
-  pathRewrite: {'^/api/partnerships': ''}
-}));
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', service: 'api-gateway' });
+// Catch-all route for 404s
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Not Found', message: 'The requested resource does not exist' });
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(`[API Gateway:Step 11]`, err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  console.error(err.stack);
+  res.status(500).json({
+    error: 'Server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred'
+  });
 });
 
+// Start the server
 app.listen(PORT, () => {
-  console.log(`[API Gateway:Step 12] API Gateway running on port ${PORT}`);
-  console.log(`[API Gateway:Step 13] Forwarding user service requests to: http://localhost:${USER_SERVICE_PORT}`);
-  console.log(`[API Gateway:Step 14] Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3010'}`);
+  console.log(`API Gateway running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Log all registered routes
+  console.log('Registered Routes:');
+  app._router.stack
+    .filter(r => r.route)
+    .map(r => {
+      Object.keys(r.route.methods).forEach(method => {
+        console.log(`${method.toUpperCase()}\t${r.route.path}`);
+      });
+    });
 });
+
+module.exports = app;
