@@ -8,6 +8,7 @@ This microservice handles user authentication, profile management, and user-rela
 - Google OAuth integration
 - JWT-based authentication
 - User profile management
+- Profile picture upload to AWS S3
 
 ## Deployment on Railway.app
 
@@ -15,6 +16,7 @@ This microservice handles user authentication, profile management, and user-rela
 
 - A Railway.app account
 - Railway CLI installed (optional, for local deployment)
+- AWS S3 bucket for profile picture storage
 
 ### Steps to Deploy
 
@@ -25,13 +27,29 @@ This microservice handles user authentication, profile management, and user-rela
 
 2. **Configure Environment Variables**
    The following environment variables need to be set in Railway.app:
-   
-   ```
+
+   ```markdown
+   # MongoDB Connection
    MONGO_URI=mongodb+srv://tymout:xShiTOyopWJvVYWn@tymout.2ovsdf2.mongodb.net/
-   JWT_SECRET=your_jwt_secret
-   GOOGLE_CLIENT_ID=your_google_client_id
-   GOOGLE_CLIENT_SECRET=your_google_client_secret
-   COOKIE_KEY=your_cookie_secret
+   
+   # Authentication
+   JWT_SECRET=tymout_jwt_secret_key_change_in_production
+   COOKIE_KEY=tymout_cookie_secret_key_change_in_production
+   
+   # Google OAuth
+   GOOGLE_CLIENT_ID=919446563884-1ak5704lr4op3m5urihhfn52bub9p53q.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=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
+   
+   # Frontend URL
+   FRONTEND_URL=https://your-frontend-url.railway.app
+   
+   # AWS S3 Configuration
+   AWS_ACCESS_KEY_ID=AKIATG6MGVT7XAJKB7SN
+   AWS_SECRET_ACCESS_KEY=5EPY0XhChmlkDS4bn0wxgCdTCorGxcN8DhnqiFGI
+   AWS_REGION=ap-south-1
+   BUCKET_NAME=tymouttest
+   
+   # Service Configuration
    NODE_ENV=production
    ```
 
@@ -63,4 +81,3 @@ npm start
 
 # Start in development mode
 npm run dev
-```
