@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { FaShare, FaCheck, FaCopy } from 'react-icons/fa';
 
@@ -9,6 +9,51 @@ import { FaShare, FaCheck, FaCopy } from 'react-icons/fa';
  * This component handles the action buttons and recommendation information
  */
 const EventDetailActions = ({ item, type, handleMainAction }) => {
+  // State to track if the user has requested to join or is already joined
+  const [isJoined, setIsJoined] = useState(false);
+  const [isRequested, setIsRequested] = useState(false);
+  
+  // Effect to check if the user has requested to join or is already joined
+  useEffect(() => {
+    if (!item) return;
+    
+    // Get the user ID from localStorage or generate a default one
+    let userId = localStorage.getItem('userId');
+    
+    // If no userId exists, create a default one and store it
+    if (!userId) {
+      // Generate a simple unique ID (in a real app, this would be more robust)
+      userId = 'anonymous-' + Date.now().toString();
+      localStorage.setItem('userId', userId);
+      console.log('[EventDetailActions] Created default user ID:', userId);
+    }
+    
+    if (item.attendees && item.requests) {
+      // Check if user is in attendees
+      const joined = item.attendees.some(attendee => {
+        const attendeeId = attendee.userId?._id?.toString() || attendee.userId?.toString();
+        return attendeeId === userId;
+      });
+      
+      // Check if user has a pending request
+      const requested = item.requests.some(request => {
+        const requesterId = request.userId?._id?.toString() || request.userId?.toString();
+        return requesterId === userId && request.status === 'pending';
+      });
+      
+      console.log('[EventDetailActions] Participation status check:', {
+        userId,
+        attendees: item.attendees,
+        requests: item.requests,
+        joined,
+        requested
+      });
+      
+      setIsJoined(joined);
+      setIsRequested(requested);
+    }
+  }, [item]);
+  
   // Determine the appropriate content label based on type
   const getTypeLabel = () => {
     switch (type) {
@@ -66,10 +111,26 @@ const EventDetailActions = ({ item, type, handleMainAction }) => {
       
       {/* Action Button */}
       <button
-        onClick={handleMainAction}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-6 rounded-lg font-medium transition mt-4"
+        onClick={() => {
+          // If not already joined or requested, handle the action
+          if (!isJoined && !isRequested) {
+            handleMainAction();
+            // Optimistically update the UI
+            setIsRequested(true);
+          }
+        }}
+        disabled={isJoined || isRequested}
+        className={`w-full py-3 px-6 rounded-lg font-medium transition mt-4 ${isJoined 
+          ? 'bg-green-600 text-white cursor-default' 
+          : isRequested 
+            ? 'bg-gray-400 text-white cursor-default' 
+            : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
       >
-        Request to Join
+        {isJoined 
+          ? 'Joined' 
+          : isRequested 
+            ? 'Requested' 
+            : 'Request to Join'}
       </button>
       
       {/* Share Button */}

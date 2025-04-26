@@ -86,13 +86,44 @@ const eventDetailService = {
           name: localStorage.getItem('userName') || 'Anonymous User'
         };
         
-        const result = await eventService.joinEvent(id, userData);
-        return {
-          success: true,
-          message: 'Your request to join this event has been sent to the host.',
-          data: result,
-          timestamp: new Date().toISOString()
-        };
+        try {
+          const result = await eventService.joinEvent(id, userData);
+          
+          // Make sure the isRequested flag is set in the result
+          const updatedData = {
+            ...result,
+            isRequested: true // Ensure this flag is set for optimistic UI updates
+          };
+          
+          return {
+            success: true,
+            message: 'Your request to join this event has been sent to the host.',
+            data: updatedData,
+            timestamp: new Date().toISOString()
+          };
+        } catch (error) {
+          // If the error is because the user already requested to join,
+          // we want to treat this as a success with isRequested=true
+          if (error.response && 
+              error.response.status === 400 && 
+              error.response.data?.error?.includes('already requested')) {
+            
+            console.log('[eventDetailService] User has already requested to join this event');
+            
+            return {
+              success: true,
+              message: 'You have already requested to join this event.',
+              data: {
+                id,
+                isRequested: true
+              },
+              timestamp: new Date().toISOString()
+            };
+          }
+          
+          // Otherwise, re-throw the error
+          throw error;
+        }
       }
       
       // For other types, use mock implementation for now

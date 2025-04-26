@@ -67,8 +67,16 @@ export const useEventAction = (type, options = {}) => {
           newData.isRsvpd = true;
           newData.attendeeCount = (newData.attendeeCount || 0) + 1;
         } else if (action === 'join') {
-          newData.isJoined = true;
-          newData.memberCount = (newData.memberCount || 0) + 1;
+          // For events, we should set isRequested to true instead of isJoined
+          // since joining an event requires approval
+          if (type === 'events') {
+            newData.isRequested = true;
+            // Don't change isJoined status as that happens after approval
+          } else {
+            // For tables, we can join directly
+            newData.isJoined = true;
+            newData.memberCount = (newData.memberCount || 0) + 1;
+          }
         } else if (action === 'apply') {
           newData.isApplied = true;
         }
@@ -130,8 +138,20 @@ export const useCancelEventAction = (type, options = {}) => {
           newData.isRsvpd = false;
           newData.attendeeCount = Math.max(0, (newData.attendeeCount || 1) - 1);
         } else if (action === 'join') {
-          newData.isJoined = false;
-          newData.memberCount = Math.max(0, (newData.memberCount || 1) - 1);
+          // For events, we need to handle both isJoined and isRequested
+          if (type === 'events') {
+            // Reset both flags since we're cancelling any participation
+            newData.isJoined = false;
+            newData.isRequested = false;
+            // Only reduce member count if they were actually joined
+            if (old.isJoined) {
+              newData.memberCount = Math.max(0, (newData.memberCount || 1) - 1);
+            }
+          } else {
+            // For tables, just handle isJoined
+            newData.isJoined = false;
+            newData.memberCount = Math.max(0, (newData.memberCount || 1) - 1);
+          }
         } else if (action === 'apply') {
           newData.isApplied = false;
         }

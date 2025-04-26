@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useScrollToElement } from '../hooks/stores/useUIStoreHooks';
 import { useExploreSearch } from '../hooks/queries/useExploreQueries';
@@ -7,6 +7,7 @@ import { useExploreSearch } from '../hooks/queries/useExploreQueries';
 import ExploreSearch from '../components/explore/ExploreSearch';
 import ExploreResults from '../components/explore/ExploreResults';
 import TagFilter from '../components/explore/TagFilter';
+import CitySelector from '../components/explore/CitySelector';
 
 /**
  * ExplorePage Component
@@ -29,6 +30,7 @@ const ExplorePage = () => {
   const activeSpecialTag = searchParams.get('view') || 'Explore';
   const distance = parseInt(searchParams.get('distance') || '10', 10);
   const sortBy = searchParams.get('sort') || 'relevance';
+  const [selectedCity, setSelectedCity] = useState(searchParams.get('city') || 'Agra');
   
   // Use React Query hook for data fetching with filters from URL parameters
   const { 
@@ -39,7 +41,8 @@ const ExplorePage = () => {
     query: searchQuery,
     tags: selectedTags,
     distance,
-    sortBy
+    sortBy,
+    city: selectedCity // Include the city parameter in the initial filters
   });
 
 
@@ -109,6 +112,17 @@ const ExplorePage = () => {
     // Pre-fetch data with new query
     updateFilters({ query });
   };
+  
+  // Handle city change
+  const handleCityChange = (city) => {
+    setSelectedCity(city);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('city', city);
+    setSearchParams(newParams);
+    
+    // Update filters with new city
+    updateFilters({ city });
+  };
 
   // Update URL parameters and trigger data fetch when tags change
   const handleTagSelect = (tags) => {
@@ -119,6 +133,7 @@ const ExplorePage = () => {
     if (activeSpecialTag) newParams.set('view', activeSpecialTag);
     if (sortBy !== 'relevance') newParams.set('sort', sortBy);
     if (distance !== 10) newParams.set('distance', distance.toString());
+    if (selectedCity) newParams.set('city', selectedCity); // Preserve city parameter
     
     // Add all tags as separate parameters
     tags.forEach(tag => newParams.append('tag', tag));
@@ -126,7 +141,7 @@ const ExplorePage = () => {
     setSearchParams(newParams);
     
     // Pre-fetch data with new tags
-    updateFilters({ tags });
+    updateFilters({ tags, city: selectedCity }); // Include city in filter update
   };
   
   // Handle special tag selection (Explore, Add Tags)
@@ -185,6 +200,16 @@ const ExplorePage = () => {
         }
       `}</style>
       
+      {/* City Selector - positioned at the very top of the page */}
+      <div className="w-full bg-transparent py-2 px-4 mb-2 sticky top-0 z-50">
+        <div className="flex justify-start">
+          <CitySelector 
+            currentCity={selectedCity}
+            onCityChange={handleCityChange}
+          />
+        </div>
+      </div>
+      
       {/* Hero image with overlayed search bar - FORCED VIEWPORT WIDTH AND TOP POSITION */}
       <div className="hero-full-bleed hero-section relative aspect-square overflow-hidden">
         <img
@@ -201,10 +226,7 @@ const ExplorePage = () => {
               query={searchQuery} 
               onSearch={handleSearch} 
             />
-            <h1 className="text-white text-3xl md:text-4xl font-bold mt-6 text-left pl-1 drop-shadow-lg">
-              Take a Tymout
-            </h1>
-            <h2 className="text-white text-xl md:text-2xl font-bold mt-1 text-left pl-1 drop-shadow-md">
+            <h2 className="text-white text-xl md:text-2xl font-bold mt-6 text-left pl-1 drop-shadow-md">
               Your Next Experience Starts Here.
             </h2>
           </div>

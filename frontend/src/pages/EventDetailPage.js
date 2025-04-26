@@ -70,10 +70,19 @@ const EventDetailPage = (props) => {
     
     console.log(`[EventDetailPage] Taking action: ${action} for ${type} with id ${id}`);
     
-    // If already participated, cancel the action
-    if ((type === 'events' && item.isJoined) ||
+    // If already participated or requested, cancel the action
+    if ((type === 'events' && (item.isJoined || item.isRequested)) ||
         (type === 'tables' && item.isJoined) ||
         (type === 'circles' && item.isApplied)) {
+      
+      // Log the current status and raw data
+      console.log(`[EventDetailPage] Current status for ${type} with id ${id}:`, {
+        isJoined: item.isJoined,
+        isRequested: item.isRequested,
+        isApplied: item.isApplied,
+        attendees: item.attendees,
+        requests: item.requests
+      });
       
       cancelEventAction.mutate({ 
         id, 

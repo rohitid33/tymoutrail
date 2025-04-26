@@ -142,7 +142,6 @@ const EventCreationFormHookForm = ({ defaultValues, onSubmit, locations, isSubmi
         maxAttendees: data.maxAttendees,
         entryFee: data.entryFee || 0,
         category: data.category,
-        capacity: data.capacity,
         access: data.isPublic ? 'public' : 'private',
         isPublic: data.isPublic // Explicitly include the isPublic field
       };
@@ -461,7 +460,7 @@ const EventCreationFormHookForm = ({ defaultValues, onSubmit, locations, isSubmi
                     }`}
                     {...field}
                   >
-                    <option value="Food">Dine</option>
+                    <option value="Dine">Dine</option>
                     <option value="Play">Play</option>
                     <option value="Create">Create</option>
                     <option value="Learn">Learn</option>
@@ -481,36 +480,7 @@ const EventCreationFormHookForm = ({ defaultValues, onSubmit, locations, isSubmi
             </div>
           </div>
 
-          {/* Capacity Field */}
-          <div>
-            <label htmlFor="capacity" className="block text-sm font-medium text-gray-700">
-              Capacity*
-            </label>
-            <div className="mt-1">
-              <Controller
-                name="capacity"
-                control={control}
-                rules={{ required: 'Capacity is required', min: { value: 1, message: 'Capacity must be at least 1' } }}
-                render={({ field }) => (
-                  <input
-                    type="number"
-                    id="capacity"
-                    min="1"
-                    placeholder="e.g., 8"
-                    className={`block w-full rounded-md shadow-sm sm:text-sm ${
-                      errors.capacity
-                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                        : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-                    }`}
-                    {...field}
-                  />
-                )}
-              />
-              {errors.capacity && (
-                <p className="mt-1 text-sm text-red-600">{errors.capacity.message}</p>
-              )}
-            </div>
-          </div>
+          {/* Capacity field removed - using maxAttendees instead */}
 
           {/* Event Image Upload */}
           <div>

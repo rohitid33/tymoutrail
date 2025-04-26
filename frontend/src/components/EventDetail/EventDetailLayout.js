@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
 import { EventDetailHeader, EventDetailHero, EventDetailInfo, EventDetailActions } from './index';
 
 /**
@@ -16,6 +17,7 @@ const EventDetailLayout = ({
   handleGoBack,
   handleMainAction
 }) => {
+  const navigate = useNavigate();
   // Handle null/undefined checks for properties
   if (!item) return null;
 
@@ -35,7 +37,24 @@ const EventDetailLayout = ({
         <div className="p-6">
           {/* Host/Organizer Info */}
           {(item.host || item.organizer) && (
-            <div className="flex items-center mb-6">
+            <div 
+              className="flex items-center mb-6 cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors duration-200"
+              onClick={() => {
+                const hostData = item.host || item.organizer;
+                if (hostData && hostData.id) {
+                  console.log('Navigating to profile page for host/organizer:', hostData.id);
+                  navigate(`/profile/${hostData.id}`, { 
+                    state: { 
+                      from: 'eventDetail',
+                      returnTo: window.location.pathname,
+                      itemTitle: item.title
+                    }
+                  });
+                } else {
+                  console.warn('Host/organizer ID not available for navigation');
+                }
+              }}
+            >
               <img
                 src={(item.host || item.organizer).image}
                 alt={(item.host || item.organizer).name}

@@ -34,12 +34,21 @@ const profileService = {
    */
   getProfileById: async (userId) => {
     try {
-      // Make an actual API call to get a user's profile by ID
+      console.log(`Fetching profile for user ID: ${userId}`);
+      
+      // Use the correct endpoint for the user service
       const response = await axios.get(`/api/users/user/${userId}`);
       
       // Check if the request was successful
       if (response.data && response.data.success) {
+        console.log('Profile data retrieved successfully:', response.data.data);
         return response.data.data;
+      }
+      
+      // If we have data but no success flag (different API response format)
+      if (response.data && !response.data.success) {
+        console.log('Profile data retrieved with alternate format:', response.data);
+        return response.data;
       }
       
       throw new Error(`Failed to fetch profile data for user ${userId}`);

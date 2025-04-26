@@ -44,7 +44,7 @@ const LoginPage = () => {
 
   // Handle Google login
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:3000/api/users/auth/google';
+    window.location.href = `${process.env.USER_SERVICE_URL || 'http://localhost:3000'}/api/users/auth/google`;
   };
 
   return (
