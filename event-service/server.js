@@ -3,23 +3,13 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path');
-const dotenv = require('dotenv');
-
-// Load environment variables from root .env file
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
-// Also load local .env file if it exists
-dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Following Single Responsibility Principle - server.js only handles server setup
 const app = express();
-const PORT = process.env.PORT || process.env.EVENT_SERVICE_PORT || 3002;
+const PORT = process.env.PORT || 3002;
 
 // MongoDB connection - using the connection string from our project
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://tymout:xShiTOyopWJvVYWn@tymout.2ovsdf2.mongodb.net/tymout-events';
-
-// Log MongoDB connection details (without sensitive info)
-console.log('MongoDB Connection URI:', MONGO_URI.replace(/:[^:]*@/, ':****@')); // Hide password in logs
 
 // Middleware
 const corsOptions = {

@@ -138,19 +138,32 @@ class EventService {
         filter.title = { $regex: query.query, $options: 'i' };
       }
       
-      // Handle tag filtering
+      // Handle category filtering instead of tags
+      // The frontend still sends 'tags', but we'll use them to filter by category
       if (query.tags && Array.isArray(query.tags) && query.tags.length > 0) {
         // If tags is a string, convert it to an array
-        const tagsArray = typeof query.tags === 'string' ? [query.tags] : query.tags;
+        const categoriesArray = typeof query.tags === 'string' ? [query.tags] : query.tags;
         
-        console.log(`[Event Service] Filtering by tags:`, tagsArray);
+        console.log(`[Event Service] Filtering by categories:`, categoriesArray);
         
-        // Create a case-insensitive regex pattern for each tag
-        const tagRegexPatterns = tagsArray.map(tag => new RegExp(tag, 'i'));
-        console.log(`[Event Service] Using case-insensitive regex patterns for tags`);
+        // Create a case-insensitive regex pattern for each category
+        const categoryRegexPatterns = categoriesArray.map(category => new RegExp(category, 'i'));
+        console.log(`[Event Service] Using case-insensitive regex patterns for categories`);
         
-        // Add tags filter - find events that have ANY of the specified tags (case-insensitive)
-        filter.tags = { $in: tagRegexPatterns };
+        // Add category filter - find events that have ANY of the specified categories (case-insensitive)
+        filter.category = { $in: categoryRegexPatterns };
+      }
+      
+      // Handle city filtering
+      if (query.city && query.city.trim() !== '') {
+        console.log(`[Event Service] Filtering by city:`, query.city);
+        
+        // Create a case-insensitive regex for the city name
+        // This will match city names in the location.city field
+        filter['location.city'] = { $regex: new RegExp(query.city, 'i') };
+        
+        // For debugging
+        console.log(`[Event Service] Added city filter for: ${query.city}`);
       }
       
       console.log(`[Event Service] Final search filter:`, filter);
