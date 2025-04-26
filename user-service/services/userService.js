@@ -69,6 +69,44 @@ class UserService {
       throw error;
     }
   }
+  
+  /**
+   * Get user profile by ID
+   * @param {string} userId - The user ID to fetch
+   * @returns {Promise<object>} - User object
+   */
+  async getUserById(userId) {
+    try {
+      console.log(`[User Service] Starting getUserById process for ID: ${userId}`);
+      
+      // Find user by ID
+      const user = await User.findById(userId);
+      if (!user) {
+        console.log(`[User Service] User not found with ID: ${userId}`);
+        throw new Error(`User not found with ID: ${userId}`);
+      }
+      
+      console.log(`[User Service] User found:`, { userId: user._id, name: user.name });
+      
+      // Return user data without sensitive information
+      return {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        bio: user.bio,
+        location: user.location,
+        profileImage: user.profileImage,
+        interests: user.interests,
+        joined: user.createdAt,
+        verified: user.verified,
+        rating: user.rating,
+        eventsHosted: user.eventsHosted || 0
+      };
+    } catch (error) {
+      console.error(`[User Service] getUserById error:`, error.message);
+      throw error;
+    }
+  }
 
   async updateProfile(userId, updateData) {
     try {

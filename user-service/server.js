@@ -10,18 +10,13 @@ const morgan = require('morgan');
 
 // Load environment variables from root .env file
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
-// Also load local .env file if it exists
-dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Following Single Responsibility Principle - server.js only handles server setup
 const app = express();
-const PORT = process.env.PORT || process.env.USER_SERVICE_PORT || 3001;
+const PORT = process.env.USER_SERVICE_PORT || 3001;
 
 // MongoDB connection - using the connection string from our project
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://tymout:xShiTOyopWJvVYWn@tymout.2ovsdf2.mongodb.net/tymout';
-
-// Log MongoDB connection details (without sensitive info)
-console.log('MongoDB Connection URI:', MONGO_URI.replace(/:[^:]*@/, ':****@')); // Hide password in logs
 
 // Session configuration
 app.use(
@@ -62,6 +57,7 @@ mongoose
   })
   .then(() => {
     console.log('Connected to MongoDB - User Service');
+    console.log('MongoDB Connection URI:', MONGO_URI.replace(/:[^:]*@/, ':****@')); // Hide password in logs
     
     // List all collections in the database
     mongoose.connection.db.listCollections().toArray((err, collections) => {
@@ -87,6 +83,17 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const googleAuthRoutes = require('./routes/googleAuth');
 const currentUserRoutes = require('./routes/currentUser');
+
+// Health check endpoint for Railway deployment
+app.get('/health', (req, res) => {
+  console.log('[User Service:Server] Health check requested');
+  res.status(200).json({ status: 'ok', service: 'user-service' });
+});
+
+app.get('/auth/health', (req, res) => {
+  console.log('[User Service:Server] Auth health check requested');
+  res.status(200).json({ status: 'ok', service: 'user-service' });
+});
 
 // Add request logging middleware before routes
 app.use((req, res, next) => {

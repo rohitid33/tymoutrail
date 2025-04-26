@@ -18,6 +18,11 @@ router.use((req, res, next) => {
 // @access  Private
 router.get('/me', auth, userController.getCurrentUser);
 
+// @route   GET /user/:id
+// @desc    Get user profile by ID
+// @access  Public
+router.get('/:id', userController.getUserById);
+
 // @route   PUT /user/profile
 // @desc    Update user profile
 // @access  Private

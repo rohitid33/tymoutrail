@@ -112,6 +112,40 @@ class UserController {
       });
     }
   }
+  
+  /**
+   * Get user profile by ID
+   * @param {object} req - Express request object
+   * @param {object} res - Express response object
+   */
+  async getUserById(req, res) {
+    console.log(`[User Controller] Starting getUserById process`);
+    console.log(`[User Controller] User ID from params:`, req.params.id);
+    
+    try {
+      // Get user by ID from userService
+      const user = await userService.getUserById(req.params.id);
+      console.log(`[User Controller] User found:`, { userId: user._id, name: user.name });
+      
+      // Return user data
+      res.status(200).json({
+        success: true,
+        data: user
+      });
+      console.log(`[User Controller] getUserById response sent`);
+    } catch (error) {
+      console.error(`[User Controller] getUserById error:`, error.message);
+      console.error(`[User Controller] Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
 
   async updateProfile(req, res) {
     try {
