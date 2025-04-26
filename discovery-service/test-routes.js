@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = process.env.API_GATEWAY_URL || 'http://localhost:3000/api';
 let authToken = ''; // Will be set after login
 
 const testRoutes = async () => {

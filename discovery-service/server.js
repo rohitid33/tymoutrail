@@ -3,29 +3,15 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path');
-const dotenv = require('dotenv');
-
-// Load environment variables from root .env file
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
-// Also load local .env file if it exists
-dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
-const PORT = process.env.PORT || process.env.DISCOVERY_SERVICE_PORT || 3003;
+const PORT = process.env.PORT || 3003;
 
 // MongoDB connection
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://tymout:xShiTOyopWJvVYWn@tymout.2ovsdf2.mongodb.net/tymout-discovery';
 
-// Log MongoDB connection details (without sensitive info)
-console.log('MongoDB Connection URI:', MONGO_URI.replace(/:[^:]*@/, ':****@')); // Hide password in logs
-
 // Middleware
-const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3010',
-  credentials: true,
-};
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(helmet());
 app.use(express.json());
 app.use(morgan('dev'));
