@@ -1,14 +1,13 @@
 [build]
 builder = "nixpacks"
-providers = ["nodejs"]
-buildCommand = "npm install --no-package-lock"
+buildCommand = "npm install"
 
 [deploy]
 startCommand = "node server.js"
-# Temporarily disable health checks to allow deployment
-# healthcheckPath = "/health"
-# healthcheckTimeout = 300
-# healthcheckInterval = 15
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "on-failure"
+restartPolicyMaxRetries = 10
 
-[deploy.env]
+[variables]
 NODE_ENV = "production"

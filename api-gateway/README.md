@@ -1,94 +1,69 @@
-# API Gateway
+# Tymout API Gateway
 
-This API Gateway serves as the central entry point for the Tymout application, routing requests to the appropriate microservices.
+This is the API Gateway service for the Tymout microservices architecture. It routes requests to the appropriate microservices.
 
-## Features
-
-- Centralized routing to all microservices
-- Authentication and session management
-- CORS configuration
-- Request logging
-- Error handling
-- Health check endpoint
-
-## Deployment on Railway.app
+## Deployment on Railway
 
 ### Prerequisites
 
-- A Railway.app account
-- All microservices deployed on Railway.app with public URLs
+- A Railway account
+- Railway CLI installed locally (optional)
 
-### Steps to Deploy
+### Environment Variables
 
-1. **Create a new project on Railway.app**
-   - Go to [Railway.app](https://railway.app/)
-   - Create a new project
-   - Choose "Deploy from GitHub" or "Empty Project"
+The following environment variables need to be set in your Railway project:
 
-2. **Configure Environment Variables**
-   The following environment variables need to be set in Railway.app:
-   
-   ```bash
-   # API Gateway Configuration
-   PORT=3000
-   NODE_ENV=production
-   COOKIE_KEY=tymout_cookie_secret_key_change_in_production
-   COOKIE_DOMAIN=railway.app
-   
-   # Frontend URL
-   FRONTEND_URL=https://your-frontend-url.railway.app
-   
-   # Microservice URLs (Railway deployed services)
-   USER_SERVICE_URL=https://user-service-production.up.railway.app
-   EVENT_SERVICE_URL=https://event-service-production.up.railway.app
-   DISCOVERY_SERVICE_URL=https://discovery-service-production.up.railway.app
-   REQUEST_SERVICE_URL=https://request-service-production.up.railway.app
-   NOTIFICATION_SERVICE_URL=https://notification-service-production.up.railway.app
-   FEEDBACK_SERVICE_URL=https://feedback-service-production.up.railway.app
-   ```
+```
+NODE_ENV=production
+PORT=<automatically set by Railway>
+MONGO_URI=mongodb+srv://tymout:xShiTOyopWJvVYWn@tymout.2ovsdf2.mongodb.net/
+JWT_SECRET=<your-jwt-secret>
+COOKIE_KEY=<your-cookie-key>
+FRONTEND_URL=<your-frontend-url>
 
-   Replace the service URLs with the actual URLs of your deployed microservices on Railway.app.
+# Service URLs (set these to your deployed microservice URLs)
+USER_SERVICE_URL=<deployed-user-service-url>
+EVENT_SERVICE_URL=<deployed-event-service-url>
+DISCOVERY_SERVICE_URL=<deployed-discovery-service-url>
+REQUEST_SERVICE_URL=<deployed-request-service-url>
+NOTIFICATION_SERVICE_URL=<deployed-notification-service-url>
+FEEDBACK_SERVICE_URL=<deployed-feedback-service-url>
+SAFETY_SERVICE_URL=<deployed-safety-service-url>
+PAYMENT_SERVICE_URL=<deployed-payment-service-url>
+PARTNERSHIP_SERVICE_URL=<deployed-partnership-service-url>
+```
 
-3. **Deploy the Service**
-   - If deploying from GitHub, connect your repository and select the api-gateway directory
-   - If deploying manually, push your code to Railway using the CLI or web interface
+### Deployment Steps
 
-4. **Verify Deployment**
-   - Once deployed, Railway will provide a URL for your service
-   - Test the service by accessing the health endpoint: `https://your-service-url.railway.app/health`
+1. Push your code to a Git repository (GitHub, GitLab, etc.)
 
-5. **Enable Public Networking**
-   - After deployment, go to the Settings tab in Railway
-   - Look for "Public Networking" or "Networking" section
-   - Enable public networking for your service
-   - This will generate a public URL for your service
+2. Connect your repository to Railway:
+   - Create a new project in Railway
+   - Select "Deploy from GitHub"
+   - Choose your repository and the api-gateway directory
+   - Railway will automatically detect the configuration
 
-## API Routes
+3. Set up environment variables:
+   - Go to your project settings in Railway
+   - Add all required environment variables
 
-The API Gateway routes requests to the following microservices:
+4. Deploy:
+   - Railway will automatically deploy your API Gateway
+   - You can monitor the deployment in the Railway dashboard
 
-- **User Service**: `/api/users/*`
-- **Event Service**: `/api/events/*` and `/api/circles/*`
-- **Discovery Service**: `/api/discovery/*`, `/api/search/*`, and `/api/recommendations/*`
-- **Request Service**: `/api/requests/*`
-- **Notification Service**: `/api/notifications/*`
-- **Feedback Service**: `/api/feedback/*`
+### Monitoring
 
-## Health Check
-
-The API Gateway provides a health check endpoint at `/health` that returns the status of the gateway and the URLs of all connected microservices.
+- The API Gateway includes a health check endpoint at `/health`
+- Railway will use this endpoint to monitor the service health
 
 ## Local Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Start the service
-npm start
-
-# Start with hot reload for development
 npm run dev
 ```
 
-For local development, you'll need to set up the environment variables in a `.env` file based on the `.env.example` template.
+## Notes
+
+- The API Gateway is configured to use the PORT environment variable provided by Railway
+- In production, make sure all microservice URLs are correctly set in the environment variables
