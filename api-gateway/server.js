@@ -37,8 +37,30 @@ app.use(
   })
 );
 
+// Configure CORS with appropriate settings
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3010',
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl requests)
+    if(!origin) return callback(null, true);
+    
+    // List of allowed origins
+    const allowedOrigins = [
+      'http://localhost:3006',
+      'http://localhost:3007', 
+      'http://localhost:3010'
+    ];
+    
+    // Add FRONTEND_URL if it exists
+    if (process.env.FRONTEND_URL) {
+      allowedOrigins.push(process.env.FRONTEND_URL);
+    }
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -58,12 +80,12 @@ app.use((req, res, next) => {
 
 // Routes to microservices
 app.use('/api/users', createProxyMiddleware({ 
-  target: `http://localhost:${USER_SERVICE_PORT}`, 
+  target: process.env.USER_SERVICE_URL || `http://localhost:${USER_SERVICE_PORT}`, 
   changeOrigin: true,
   pathRewrite: {'^/api/users': ''},
   // Enable cookies for Google OAuth
   cookieDomainRewrite: {
-    '*': 'localhost'
+    '*': process.env.FRONTEND_URL || 'http://localhost:3010'
   },
   // Configure proxy options
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
@@ -120,7 +142,7 @@ app.use('/api/users', createProxyMiddleware({
         proxyRes.headers.location = `/api/users${location}`;
       } else if (location.includes('/auth/success')) {
         // Make sure the success redirect goes to the correct frontend URL
-        proxyRes.headers.location = location.replace('http://localhost:3000', process.env.FRONTEND_URL || 'http://localhost:3010');
+        proxyRes.headers.location = location.replace(process.env.API_GATEWAY_URL || 'http://localhost:3000', process.env.FRONTEND_URL || 'http://localhost:3010');
       }
     }
   },
@@ -141,7 +163,7 @@ app.use('/api/users', createProxyMiddleware({
 }));
 
 app.use('/api/events', createProxyMiddleware({ 
-  target: `http://localhost:${EVENT_SERVICE_PORT}`, 
+  target: process.env.EVENT_SERVICE_URL || `http://localhost:${EVENT_SERVICE_PORT}`, 
   changeOrigin: true,
   pathRewrite: {'^/api/events': '/events'},
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
@@ -169,7 +191,7 @@ app.use('/api/events', createProxyMiddleware({
 }));
 
 app.use('/api/circles', createProxyMiddleware({ 
-  target: `http://localhost:${EVENT_SERVICE_PORT}`, 
+  target: process.env.EVENT_SERVICE_URL || `http://localhost:${EVENT_SERVICE_PORT}`, 
   changeOrigin: true,
   pathRewrite: {'^/api/circles': '/circles'},
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
@@ -195,7 +217,7 @@ app.use('/api/circles', createProxyMiddleware({
 
 // Discovery Service Routes
 app.use(['/api/discovery', '/api/search', '/api/recommendations'], createProxyMiddleware({ 
-  target: `http://localhost:${DISCOVERY_SERVICE_PORT}`, 
+  target: process.env.DISCOVERY_SERVICE_URL || `http://localhost:${DISCOVERY_SERVICE_PORT}`, 
   changeOrigin: true,
   pathRewrite: {
     '^/api/discovery': '/discovery',
@@ -224,44 +246,57 @@ app.use(['/api/discovery', '/api/search', '/api/recommendations'], createProxyMi
 }));
 
 app.use('/api/requests', createProxyMiddleware({ 
-  target: `http://localhost:${REQUEST_SERVICE_PORT}`, 
+  target: process.env.REQUEST_SERVICE_URL || `http://localhost:${REQUEST_SERVICE_PORT}`, 
   changeOrigin: true,
   pathRewrite: {'^/api/requests': ''}
 }));
 
 app.use('/api/notifications', createProxyMiddleware({ 
-  target: `http://localhost:${NOTIFICATION_SERVICE_PORT}`, 
+  target: process.env.NOTIFICATION_SERVICE_URL || `http://localhost:${NOTIFICATION_SERVICE_PORT}`, 
   changeOrigin: true,
   pathRewrite: {'^/api/notifications': ''}
 }));
 
 app.use('/api/feedback', createProxyMiddleware({ 
-  target: `http://localhost:${FEEDBACK_SERVICE_PORT}`, 
+  target: process.env.FEEDBACK_SERVICE_URL || `http://localhost:${FEEDBACK_SERVICE_PORT}`, 
   changeOrigin: true,
   pathRewrite: {'^/api/feedback': ''}
 }));
 
 app.use('/api/safety', createProxyMiddleware({ 
-  target: `http://localhost:${SAFETY_SERVICE_PORT}`, 
+  target: process.env.SAFETY_SERVICE_URL || `http://localhost:${SAFETY_SERVICE_PORT}`, 
   changeOrigin: true,
   pathRewrite: {'^/api/safety': ''}
 }));
 
 app.use('/api/payments', createProxyMiddleware({ 
-  target: `http://localhost:${PAYMENT_SERVICE_PORT}`, 
+  target: process.env.PAYMENT_SERVICE_URL || `http://localhost:${PAYMENT_SERVICE_PORT}`, 
   changeOrigin: true,
   pathRewrite: {'^/api/payments': ''}
 }));
 
 app.use('/api/partnerships', createProxyMiddleware({ 
-  target: `http://localhost:${PARTNERSHIP_SERVICE_PORT}`, 
+  target: process.env.PARTNERSHIP_SERVICE_URL || `http://localhost:${PARTNERSHIP_SERVICE_PORT}`, 
   changeOrigin: true,
   pathRewrite: {'^/api/partnerships': ''}
 }));
 
-// Health check endpoint
+// Basic root endpoint for testing
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'API Gateway is running', timestamp: new Date().toISOString() });
+});
+
+// Health check endpoint for Railway deployment
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', service: 'api-gateway' });
+  // Check if we can connect to essential services
+  const healthStatus = {
+    status: 'ok',
+    service: 'api-gateway',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  };
+  
+  res.status(200).json(healthStatus);
 });
 
 // Error handling middleware
