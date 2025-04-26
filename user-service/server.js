@@ -9,7 +9,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 
 // Load environment variables from root .env file
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
+dotenv.config({ path: process.env.NODE_ENV === 'production' ? './.env' : path.join(__dirname, '..', '.env') });
 
 // Following Single Responsibility Principle - server.js only handles server setup
 const app = express();
@@ -33,7 +33,12 @@ app.use(
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3010',
+  origin: [
+    process.env.FRONTEND_URL || 'https://tymout-frontend-frontend.vercel.app',
+    process.env.API_GATEWAY_URL || 'https://api-gateway-production-b713.up.railway.app',
+    'http://localhost:3010',
+    'http://localhost:3000'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -47,7 +52,11 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Import Passport config
-require('./config/passport');
+if (process.env.NODE_ENV === 'production') {
+  require('./config/passport.production');
+} else {
+  require('./config/passport');
+}
 
 // Connect to MongoDB
 mongoose
@@ -174,6 +183,11 @@ app.get('/test-db', async (req, res) => {
     console.error('Database test error:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', service: 'user-service' });
 });
 
 // Add error handling middleware

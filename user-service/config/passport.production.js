@@ -8,29 +8,29 @@ const path = require('path');
 const User = require('../models/User');
 
 // Load environment variables using absolute path
-dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 // Following Single Responsibility Principle - this file only handles authentication strategies
 // Get configuration from environment variables
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const JWT_SECRET = process.env.JWT_SECRET || 'tymout_jwt_secret_key_change_in_production';
-const API_GATEWAY_PORT = process.env.API_GATEWAY_PORT || 3000;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3010';
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL || 'https://api-gateway-production-b713.up.railway.app';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://tymout-frontend-frontend.vercel.app';
 
 // Log environment variables to help with debugging
 console.log('Environment variables loaded in passport.js:');
 console.log('GOOGLE_CLIENT_ID:', GOOGLE_CLIENT_ID ? 'Set (value hidden)' : 'Not set');
 console.log('GOOGLE_CLIENT_SECRET:', GOOGLE_CLIENT_SECRET ? 'Set (value hidden)' : 'Not set');
-console.log('API_GATEWAY_PORT:', API_GATEWAY_PORT);
+console.log('API_GATEWAY_URL:', API_GATEWAY_URL);
 console.log('FRONTEND_URL:', FRONTEND_URL);
 
 // Construct the callback URL using environment variables
-const CALLBACK_URL = `http://localhost:3000/api/users/auth/google/callback`;
+const CALLBACK_URL = `${API_GATEWAY_URL}/api/users/auth/google/callback`;
 
 // Define authorized origins
 const AUTHORIZED_ORIGINS = [
-  `http://localhost:${API_GATEWAY_PORT}`,
+  API_GATEWAY_URL,
   FRONTEND_URL
 ];
 
