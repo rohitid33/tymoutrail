@@ -177,9 +177,9 @@ app.get('/test-db', async (req, res) => {
 });
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', service: 'user-service' });
-});
+// app.get('/health', (req, res) => {
+//   res.status(200).json({ status: 'ok', service: 'user-service' });
+// });
 
 // Add error handling middleware
 app.use((err, req, res, next) => {
