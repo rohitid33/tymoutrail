@@ -29,7 +29,7 @@ const auth = (req, res, next) => {
     };
     next();
   } catch (err) {
-    console.error(`[Auth Middleware] Token verification error:`, err.message);
+    console.error(`[Auth Middleware] Token verification failed:`, err.message);
     res.status(401).json({ error: 'Token is not valid' });
   }
 };

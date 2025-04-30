@@ -9,11 +9,11 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 
 // Load environment variables from root .env file
-dotenv.config({ path: process.env.NODE_ENV === 'production' ? './.env' : path.join(__dirname, '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 // Following Single Responsibility Principle - server.js only handles server setup
 const app = express();
-const PORT = process.env.PORT || process.env.USER_SERVICE_PORT || 3001;
+const PORT = process.env.USER_SERVICE_PORT || 3001;
 
 // MongoDB connection - using the connection string from our project
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://tymout:xShiTOyopWJvVYWn@tymout.2ovsdf2.mongodb.net/tymout';
@@ -33,12 +33,7 @@ app.use(
 
 // Middleware
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'https://tymout-frontend-frontend.vercel.app',
-    process.env.API_GATEWAY_URL || 'https://api-gateway-production-b713.up.railway.app',
-    'http://localhost:3010',
-    'http://localhost:3000'
-  ],
+  origin: process.env.FRONTEND_URL || 'http://localhost:3010',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -52,11 +47,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Import Passport config
-if (process.env.NODE_ENV === 'production') {
-  require('./config/passport.production');
-} else {
-  require('./config/passport');
-}
+require('./config/passport');
 
 // Connect to MongoDB
 mongoose

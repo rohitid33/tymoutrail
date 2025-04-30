@@ -16,7 +16,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 // Configuration
-const USER_SERVICE_URL = `http://localhost:${process.env.USER_SERVICE_PORT || 3001}`;
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || `http://localhost:${process.env.USER_SERVICE_PORT || 3001}`;
 const TEST_IMAGE_PATH = path.join(__dirname, 'test-image.jpg'); // Make sure this file exists
 const TEST_USER = {
   email: 'test@example.com',

@@ -36,6 +36,11 @@ const eventSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Title cannot be more than 100 characters']
   },
+  set_trending: {
+    type: Number,
+    default: 0,
+    index: true // Adding an index for faster sorting
+  },
   event_image: {
     type: String,
     trim: true
@@ -44,6 +49,11 @@ const eventSchema = new mongoose.Schema({
     type: String,
     enum: ['public', 'private'],
     default: 'public'
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'accepted', 'rejected', 'canceled'],
+    default: 'pending'
   },
   description: {
     type: String,
@@ -170,6 +180,11 @@ const eventSchema = new mongoose.Schema({
     trim: true
   }],
   feedback: [feedbackSchema],
+  // Array of photo URLs for event moments/photos gallery
+  photos: [{
+    type: String,
+    trim: true
+  }],
   media: [{
     type: {
       type: String,

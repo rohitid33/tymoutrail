@@ -7,11 +7,11 @@ const dotenv = require('dotenv');
 const session = require('express-session');
 
 // Load environment variables
-dotenv.config({ path: process.env.NODE_ENV === 'production' ? './.env' : '../.env' });
+dotenv.config({ path: '../.env' });
 
 // Following Single Responsibility Principle - server.js only handles server setup and routing
 const app = express();
-const PORT = process.env.PORT || process.env.API_GATEWAY_PORT || 3000;
+const PORT = process.env.API_GATEWAY_PORT || 3000;
 
 // Get service ports from environment variables
 const USER_SERVICE_PORT = process.env.USER_SERVICE_PORT || 3001;
@@ -38,7 +38,7 @@ app.use(
 );
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'https://tymout.vercel.app',
+  origin: process.env.FRONTEND_URL || 'http://localhost:3010',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -63,7 +63,7 @@ app.use('/api/users', createProxyMiddleware({
   pathRewrite: {'^/api/users': ''},
   // Enable cookies for Google OAuth
   cookieDomainRewrite: {
-    '*': process.env.NODE_ENV === 'production' ? '.railway.app' : 'localhost'
+    '*': process.env.FRONTEND_URL || 'http://localhost:3010'
   },
   // Configure proxy options
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
@@ -120,7 +120,7 @@ app.use('/api/users', createProxyMiddleware({
         proxyRes.headers.location = `/api/users${location}`;
       } else if (location.includes('/auth/success')) {
         // Make sure the success redirect goes to the correct frontend URL
-        proxyRes.headers.location = location.replace(process.env.API_GATEWAY_URL || 'http://localhost:3000', process.env.FRONTEND_URL || 'https://tymout.vercel.app');
+        proxyRes.headers.location = location.replace(process.env.API_GATEWAY_URL || 'http://localhost:3000', process.env.FRONTEND_URL || 'http://localhost:3010');
       }
     }
   },
@@ -273,5 +273,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`[API Gateway:Step 12] API Gateway running on port ${PORT}`);
   console.log(`[API Gateway:Step 13] Forwarding user service requests to: http://localhost:${USER_SERVICE_PORT}`);
-  console.log(`[API Gateway:Step 14] Frontend URL: ${process.env.FRONTEND_URL || 'https://tymout.vercel.app'}`);
+  console.log(`[API Gateway:Step 14] Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3010'}`);
 });

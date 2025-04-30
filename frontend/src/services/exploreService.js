@@ -29,13 +29,25 @@ const exploreService = {
       // Create a new params object to handle special cases
       const apiParams = { ...params };
       
+      // Handle "Only For You" feature
+      if (params.view === 'Only For You' && params.userInterests) {
+        console.log('Sending user interests to backend for personalized results:', params.userInterests);
+        // Ensure userInterests is properly formatted
+        if (Array.isArray(params.userInterests)) {
+          apiParams.userInterests = params.userInterests;
+        } else if (typeof params.userInterests === 'string') {
+          // If it's a string, convert to array
+          apiParams.userInterests = params.userInterests.split(',');
+        }
+      }
+      
       // Ensure tags are properly formatted for the API
       if (params.tags && Array.isArray(params.tags) && params.tags.length > 0) {
         // Keep as is - the backend expects an array
         console.log('Sending tags to backend:', params.tags);
       }
       
-      const response = await axios.get(`${process.env.EVENT_SERVICE_URL || 'http://localhost:3002'}/events/search`, { params: apiParams });
+      const response = await axios.get(`${process.env.REACT_APP_EVENT_SERVICE_URL || 'http://localhost:3002'}/events/search`, { params: apiParams });
       // Handle the response format from the backend which returns { success: true, data: events }
       const events = response.data.data || [];
       

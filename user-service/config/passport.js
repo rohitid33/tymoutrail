@@ -26,12 +26,14 @@ console.log('API_GATEWAY_PORT:', API_GATEWAY_PORT);
 console.log('FRONTEND_URL:', FRONTEND_URL);
 
 // Construct the callback URL using environment variables
-const CALLBACK_URL = `http://localhost:3000/api/users/auth/google/callback`;
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL || `http://localhost:${API_GATEWAY_PORT}`;
+const CALLBACK_URL = `${API_GATEWAY_URL}/api/users/auth/google/callback`;
 
 // Define authorized origins
 const AUTHORIZED_ORIGINS = [
   `http://localhost:${API_GATEWAY_PORT}`,
-  FRONTEND_URL
+  FRONTEND_URL,
+  process.env.API_GATEWAY_URL
 ];
 
 // Serialize user for the session

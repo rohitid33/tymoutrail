@@ -16,6 +16,7 @@ class EventService {
       await event.save();
       return event;
     } catch (error) {
+      console.error('[Event Service] Error creating event:', error);
       throw error;
     }
   }
@@ -137,27 +138,57 @@ class EventService {
       console.log(`[Event Service] Searching events with query:`, query);
       
       // Build the search filter based on available parameters
-      let filter = {};
+      let filter = {
+        // Only show events with 'accepted' status on the Explore page
+        status: 'accepted'
+      };
       
       // Handle search query (text search)
       if (query.query && query.query.trim() !== '') {
         filter.title = { $regex: query.query, $options: 'i' };
       }
       
-      // Handle category filtering instead of tags
-      // The frontend still sends 'tags', but we'll use them to filter by category
+      // Handle filtering by tags (categories)
       if (query.tags && Array.isArray(query.tags) && query.tags.length > 0) {
-        // If tags is a string, convert it to an array
-        const categoriesArray = typeof query.tags === 'string' ? [query.tags] : query.tags;
-        
-        console.log(`[Event Service] Filtering by categories:`, categoriesArray);
-        
-        // Create a case-insensitive regex pattern for each category
-        const categoryRegexPatterns = categoriesArray.map(category => new RegExp(category, 'i'));
-        console.log(`[Event Service] Using case-insensitive regex patterns for categories`);
-        
-        // Add category filter - find events that have ANY of the specified categories (case-insensitive)
-        filter.category = { $in: categoryRegexPatterns };
+        // Check if 'All' is in the tags - if so, skip tag filtering
+        if (query.tags.includes('All')) {
+          console.log(`[Event Service] 'All' tag selected, skipping tag filtering`);
+          // No tag filters applied when 'All' is selected
+        }
+        // Check if 'Only For You' is in the tags
+        else if (query.tags.includes('Only For You') && query.userInterests && Array.isArray(query.userInterests) && query.userInterests.length > 0) {
+          console.log(`[Event Service] Filtering by user interests:`, query.userInterests);
+          
+          // Find events that match any of the user's interests
+          filter.tags = { $in: query.userInterests };
+          
+          // Remove 'Only For You' from the tags array for further processing
+          const otherTags = query.tags.filter(tag => tag !== 'Only For You');
+          
+          // If there are other tags, add them to the category filter
+          if (otherTags.length > 0) {
+            const categoriesArray = otherTags;
+            console.log(`[Event Service] Also filtering by categories:`, categoriesArray);
+            
+            // Create a case-insensitive regex pattern for each category
+            const categoryRegexPatterns = categoriesArray.map(category => new RegExp(category, 'i'));
+            
+            // Add category filter - find events that have ANY of the specified categories (case-insensitive)
+            filter.category = { $in: categoryRegexPatterns };
+          }
+        } else {
+          // If tags is a string, convert it to an array
+          const categoriesArray = typeof query.tags === 'string' ? [query.tags] : query.tags;
+          
+          console.log(`[Event Service] Filtering by categories:`, categoriesArray);
+          
+          // Create a case-insensitive regex pattern for each category
+          const categoryRegexPatterns = categoriesArray.map(category => new RegExp(category, 'i'));
+          console.log(`[Event Service] Using case-insensitive regex patterns for categories`);
+          
+          // Add category filter - find events that have ANY of the specified categories (case-insensitive)
+          filter.category = { $in: categoryRegexPatterns };
+        }
       }
       
       // Handle city filtering
@@ -174,12 +205,12 @@ class EventService {
       
       console.log(`[Event Service] Final search filter:`, filter);
       
-      // If no filters are specified, return all events
+      // If no filters are specified, return all events, sorted by set_trending in descending order
       const events = Object.keys(filter).length > 0 
-        ? await Event.find(filter)
-        : await Event.find();
+        ? await Event.find(filter).sort({ set_trending: -1, createdAt: -1 })
+        : await Event.find().sort({ set_trending: -1, createdAt: -1 });
       
-      console.log(`[Event Service] Found ${events.length} matching events`);
+      console.log(`[Event Service] Found ${events.length} matching events, sorted by trending value`);
       return events;
     } catch(error) {
       console.error(`[Event Service] Error searching events:`, error);
@@ -192,6 +223,34 @@ class EventService {
       const events = await Event.find({ 'location.city': city });
       return events;
     } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Search events by user interests
+   * @param {Array} interests - Array of user interests
+   * @returns {Promise<Array>} - Array of matching events
+   */
+  async searchEventsByInterests(interests) {
+    try {
+      console.log(`[Event Service] Searching events by interests:`, interests);
+      
+      if (!interests || !Array.isArray(interests) || interests.length === 0) {
+        console.log(`[Event Service] No interests provided, returning all accepted events`);
+        return await Event.find({ status: 'accepted' }).sort({ set_trending: -1, createdAt: -1 });
+      }
+      
+      // Find events with tags that match any of the user's interests
+      const events = await Event.find({
+        status: 'accepted',
+        tags: { $in: interests }
+      }).sort({ set_trending: -1, createdAt: -1 });
+      
+      console.log(`[Event Service] Found ${events.length} events matching user interests`);
+      return events;
+    } catch (error) {
+      console.error(`[Event Service] Error searching events by interests:`, error);
       throw error;
     }
   }
