@@ -5,9 +5,6 @@ buildCommand = "npm install --no-package-lock"
 
 [deploy]
 startCommand = "node server.js"
-healthcheckPath = "/health"
-healthcheckTimeout = 600
-healthcheckInterval = 15
 
 [deploy.env]
 NODE_ENV = "production"
