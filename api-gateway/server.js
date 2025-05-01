@@ -7,11 +7,11 @@ const dotenv = require('dotenv');
 const session = require('express-session');
 
 // Load environment variables
-dotenv.config({ path: '../.env' });
+dotenv.config({ path: process.env.NODE_ENV === 'production' ? './.env' : '../.env' });
 
 // Following Single Responsibility Principle - server.js only handles server setup and routing
 const app = express();
-const PORT = process.env.API_GATEWAY_PORT || 3000;
+const PORT = process.env.PORT || process.env.API_GATEWAY_PORT || 3000;
 
 // Get service ports from environment variables
 const USER_SERVICE_PORT = process.env.USER_SERVICE_PORT || 3001;
@@ -63,7 +63,7 @@ app.use('/api/users', createProxyMiddleware({
   pathRewrite: {'^/api/users': ''},
   // Enable cookies for Google OAuth
   cookieDomainRewrite: {
-    '*': process.env.FRONTEND_URL || 'http://localhost:3010'
+    '*': process.env.NODE_ENV === 'production' ? '.railway.app' : 'localhost'
   },
   // Configure proxy options
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
