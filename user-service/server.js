@@ -85,7 +85,7 @@ const googleAuthRoutes = require('./routes/googleAuth');
 const currentUserRoutes = require('./routes/currentUser');
 
 // Health check endpoint for Railway deployment
-app.get('/health', (req, res) => {
+app.use('/health', (req, res) => {
   console.log('[User Service:Server] Health check requested');
   res.status(200).json({ status: 'ok', service: 'user-service' });
 });

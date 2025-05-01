@@ -260,7 +260,7 @@ app.use('/api/partnerships', createProxyMiddleware({
 }));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.use('/health', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'api-gateway' });
 });
 
