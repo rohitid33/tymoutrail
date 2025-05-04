@@ -9,6 +9,7 @@ const User = require('../models/User');
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'tymout_jwt_secret_key_change_in_production';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3010';
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL || 'http://localhost:3000';
 
 // @route   GET /auth/google
 // @desc    Authenticate with Google

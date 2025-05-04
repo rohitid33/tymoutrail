@@ -1,11 +1,8 @@
-import React, { useState, useRef } from 'react';
-
-
-
+import React, { useState, useRef, forwardRef } from 'react';
 
 const LONG_PRESS_DURATION = 600; // ms
 
-const ChatMessageBubble = ({ message, isOwn, userPhoto, onDelete }) => {
+const ChatMessageBubble = forwardRef(({ message, isOwn, userPhoto, onDelete, onReplyTo }, ref) => {
   // Get initials from name for avatar fallback
   const getInitials = (fullName) => {
     if (!fullName) return '?';
@@ -21,7 +18,7 @@ const ChatMessageBubble = ({ message, isOwn, userPhoto, onDelete }) => {
 
   // Long press for mobile
   const handleTouchStart = () => {
-    if (!isOwn || message.deleted) return;
+    if (!isOwn || message.isDeleted || message.deleted) return;
     setPressTimer(setTimeout(() => {
       onDelete && onDelete(message._id);
     }, LONG_PRESS_DURATION));
@@ -33,16 +30,22 @@ const ChatMessageBubble = ({ message, isOwn, userPhoto, onDelete }) => {
 
   // Right click for desktop
   const handleContextMenu = (e) => {
-    if (!isOwn || message.deleted) return;
+    if (!isOwn || message.isDeleted || message.deleted) return;
     e.preventDefault();
     onDelete && onDelete(message._id);
+  };
+
+  // Handle reply to this message
+  const handleReplyClick = (e) => {
+    e.stopPropagation();
+    if (message.isDeleted || message.deleted) return;
+    onReplyTo && onReplyTo(message);
   };
 
   // Improved UX: right for self, left for others, avatars accordingly
   return (
     <div
-      className={`flex items-end mb-2 ${isOwn ? 'justify-end' : 'justify-start'}`}
-      style={{ width: '100%' }}
+      className={`flex items-end mb-2 w-full ${isOwn ? 'justify-end' : 'justify-start'}`}
     >
       {/* Avatar for other users (left) */}
       {!isOwn && (
@@ -66,44 +69,97 @@ const ChatMessageBubble = ({ message, isOwn, userPhoto, onDelete }) => {
         )
       )}
       {/* Message bubble */}
-      <div
-        className={`rounded-lg px-3 py-2 max-w-[50%] text-sm shadow component-card break-words break-all whitespace-pre-line ${isOwn ? 'bg-theme-accent text-white' : 'bg-gray-100 text-gray-900'}`}
-        style={isOwn ? { color: '#fff', backgroundColor: 'var(--color-theme-accent, #2563eb)', order: 1 } : { order: 1 }}
-        aria-label={isOwn ? 'Your message' : 'Member message'}
-        onContextMenu={handleContextMenu}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        ref={touchRef}
-      >
-        {/* Sender name above bubble */}
-        <div className={`text-xs mb-1 font-medium ${isOwn ? 'text-right text-theme-accent' : 'text-left text-gray-700'}`}>
-          {isOwn ? 'You' : (
-            message.senderName ||
-            (typeof message.sender === 'object' && (message.sender.name || message.sender.username || message.sender.email || message.sender._id || message.sender.id)) ||
-            message.sender ||
-            'Unknown'
-          )}
-        </div>
-        <div>
-          {message.deleted
-            ? <span className="italic text-gray-400">This message was deleted.</span>
-            : (message.text || <span className="text-red-500">[Empty]</span>)}
-        </div>
-        <div className="text-xs text-gray-400 mt-1 text-right">
-          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      <div className="flex flex-col gap-1 max-w-[85%]" style={{ order: 1 }}>
+        {/* Reply indicator */}
+        {message.replyTo && (
+          <div 
+            className={`rounded px-2 py-1 text-xs flex items-center gap-1 w-auto cursor-pointer hover:bg-opacity-80 ${
+              isOwn ? 'bg-indigo-700/30 ml-auto' : 'bg-gray-200/80 mr-auto'
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Get the original message ID and pass to parent for scrolling
+              const originalMessageId = message.replyTo.messageId;
+              if (originalMessageId && typeof onReplyTo === 'function') {
+                // Call special handler to scroll to message
+                onReplyTo(null, originalMessageId);
+              }
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 17 4 12 9 7"></polyline>
+              <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
+            </svg>
+            <span className="truncate max-w-[180px]">
+              <span className="font-medium">
+                {message.replyTo.senderName || 
+                  (typeof message.replyTo.sender === 'object' && 
+                    (message.replyTo.sender.name || message.replyTo.sender.username)) || 
+                  'Unknown'}:
+              </span>{' '}
+              {message.replyTo.text?.substring(0, 30) || '[deleted]'}
+              {message.replyTo.text?.length > 30 ? '...' : ''}
+            </span>
+          </div>
+        )}
+        
+        {/* Message bubble */}
+        <div
+          className={`rounded-lg px-3 py-2 text-base shadow component-card break-words whitespace-pre-line ${isOwn ? 'bg-theme-accent text-white' : 'bg-gray-100 text-gray-900'} relative`}
+          style={isOwn ? { color: '#fff', backgroundColor: 'var(--color-theme-accent, #2563eb)' } : {}}
+          aria-label={isOwn ? 'Your message' : 'Member message'}
+          onContextMenu={handleContextMenu}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          ref={(el) => {
+            // Merge refs
+            touchRef.current = el;
+            if (typeof ref === 'function') ref(el);
+            else if (ref) ref.current = el;
+          }}
+          onClick={handleReplyClick}
+        >
+          {/* Sender name above bubble */}
+          <div className={`text-xs mb-1 font-medium ${isOwn ? 'text-right text-theme-accent' : 'text-left text-gray-700'}`}>
+            {isOwn ? 'You' : (
+              message.senderName ||
+              (typeof message.sender === 'object' && (message.sender.name || message.sender.username || message.sender.email || message.sender._id || message.sender.id)) ||
+              message.sender ||
+              'Unknown'
+            )}
+          </div>
+          <div>
+            {(message.isDeleted || message.deleted)
+              ? <span className="italic text-gray-400">This message was deleted</span>
+              : (<span className="break-words">{message.text || <span className="text-red-500">[Empty]</span>}</span>)}
+          </div>
+          <div className="text-xs text-gray-400 mt-1 text-right flex items-center gap-1 justify-end">
+            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {isOwn && !(message.isDeleted || message.deleted) && (
+              message.pending || message.status === 'pending' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : message.status === 'sent' || !message.status ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M13.485 1.929a.75.75 0 010 1.06L6.06 10.414a.75.75 0 01-1.06 0L2.515 7.93a.75.75 0 111.06-1.06l2.004 2.003 6.36-6.36a.75.75 0 011.06 0z" />
+                </svg>
+              ) : message.status === 'delivered' ? (
+                <span className="flex items-center gap-0.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M13.485 1.929a.75.75 0 010 1.06L6.06 10.414a.75.75 0 01-1.06 0L2.515 7.93a.75.75 0 111.06-1.06l2.004 2.003 6.36-6.36a.75.75 0 011.06 0z" />
+                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 -ml-1" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M13.485 1.929a.75.75 0 010 1.06L6.06 10.414a.75.75 0 01-1.06 0L2.515 7.93a.75.75 0 111.06-1.06l2.004 2.003 6.36-6.36a.75.75 0 011.06 0z" />
+                  </svg>
+                </span>
+              ) : null
+            )}
+          </div>
         </div>
       </div>
-      {/* Avatar for self (right) */}
-      {isOwn && (
-        <div 
-          className="w-8 h-8 rounded-full flex items-center justify-center bg-indigo-100 text-indigo-800 text-xs font-bold border border-gray-200 ml-2"
-          style={{ order: 2 }}
-        >
-          {getInitials('You')}
-        </div>
-      )}
     </div>
   );
-};
+});
 
 export default ChatMessageBubble;

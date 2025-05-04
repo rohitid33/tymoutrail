@@ -5,11 +5,11 @@ import ChatInputBox from '../components/chat/ChatInputBox';
 import GroupHeader from '../components/chat/GroupHeader';
 import MomentsTab from '../components/chat/MomentsTab';
 import MembersTab from '../components/chat/MembersTab';
+import AboutTab from '../components/chat/AboutTab';
 
 import { useMyEvents } from '../hooks/queries/useMyEventsQueries';
 import { useAuthStore } from '../../stores/authStore';
 import { useChatSocket } from '../hooks/useChatSocket';
-import { useEventsQuery } from '../hooks/queries/useEventsQuery';
 import { useEventMembersQuery } from '../hooks/queries/useEventMembersQuery';
 
 
@@ -36,7 +36,13 @@ const EventChatPage = () => {
   }, []);
   
   // State for active tab
-  const [activeTab, setActiveTab] = useState('chat');
+  const [activeTab, setActiveTab] = useState('groupinfo');
+  
+  // State for showing group tabbed interface
+  const [showGroupTabs, setShowGroupTabs] = useState(false);
+  
+  // Reference to the chat container
+  const chatContainerRef = React.useRef(null);
   
   console.log('EventChatPage mounted.');
   const { eventId } = useParams();
@@ -59,15 +65,113 @@ const EventChatPage = () => {
   // useChatSocket returns an array of message objects as per the backend structure
   const { messages, sendMessage } = useChatSocket(eventId);
   const [input, setInput] = useState('');
+  const [replyToMessage, setReplyToMessage] = useState(null);
+  
+  // Force scroll to bottom when messages are loaded
+  useEffect(() => {
+    if (messages && messages.length > 0 && chatContainerRef.current) {
+      console.log('EventChatPage: Messages loaded, scrolling to bottom');
+      
+      // Add extra padding to ensure the last message is fully visible
+      const scrollWithPadding = () => {
+        if (chatContainerRef.current) {
+          // Add extra scroll to ensure the last message is fully visible
+          // Using a larger offset to account for the input area height and any bottom UI elements
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight + 500;
+        }
+      };
+      
+      // Immediate scroll
+      scrollWithPadding();
+      
+      // Multiple delayed scrolls to ensure the last message is visible after layout
+      setTimeout(scrollWithPadding, 100);
+      setTimeout(scrollWithPadding, 300);
+      setTimeout(scrollWithPadding, 500);
+    }
+  }, [messages]);
 
   const handleSend = (text) => {
     if (!text.trim()) return;
-    sendMessage(text);
+    sendMessage(text, replyToMessage);
+    setReplyToMessage(null);
     setInput('');
+  };
+
+  const handleReplyTo = (message) => {
+    setReplyToMessage(message);
+    // Focus on input field after selecting a message to reply to
+    document.querySelector('textarea')?.focus();
+  };
+
+  const handleCancelReply = () => {
+    setReplyToMessage(null);
   };
 
   // Debug: Log the event object to inspect its structure
   console.log('EventChatPage event:', event);
+
+  if (showGroupTabs) {
+    return (
+      <div className="flex flex-col h-screen bg-white max-w-[600px] mx-auto relative">
+        {/* Header (back button + consistent GroupHeader) */}
+        <div className="sticky top-0 z-40 bg-white border-b border-gray-100 p-3 flex items-center gap-3">
+          {/* Back Button */}
+          <button
+            className="p-2 rounded hover:bg-gray-100 focus:outline-none"
+            onClick={() => setShowGroupTabs(false)}
+            aria-label="Back to Chat"
+          >
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          {/* Group header styled same as chat */}
+          <GroupHeader event={event} onClick={() => {}} />
+        </div>
+        {/* Tab navigation */}
+        <div className="flex border-b border-gray-200 bg-white sticky top-16 z-30">
+          <button
+            className={`flex-1 py-3 text-sm font-medium focus:outline-none transition-colors ${activeTab === 'groupinfo' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500'}`}
+            onClick={() => setActiveTab('groupinfo')}
+          >
+            Group Info
+          </button>
+          <button
+            className={`flex-1 py-3 text-sm font-medium focus:outline-none transition-colors ${activeTab === 'moments' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500'}`}
+            onClick={() => setActiveTab('moments')}
+          >
+            Moments
+          </button>
+          <button
+            className={`flex-1 py-3 text-sm font-medium focus:outline-none transition-colors ${activeTab === 'members' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500'}`}
+            onClick={() => setActiveTab('members')}
+          >
+            Members
+          </button>
+        </div>
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col overflow-hidden pt-2">
+          {activeTab === 'groupinfo' && (
+            <div className="flex-1 overflow-y-auto">
+              <AboutTab event={event} />
+            </div>
+          )}
+          {activeTab === 'moments' && (
+            <div className="flex-1 overflow-y-auto">
+              <MomentsTab eventId={eventId} />
+            </div>
+          )}
+          {activeTab === 'members' && (
+            <div className="flex-1 overflow-y-auto">
+              <MembersTab members={members} event={event} />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen bg-white max-w-[600px] mx-auto relative">
       {/* Header - position sticky instead of fixed */}
@@ -81,61 +185,36 @@ const EventChatPage = () => {
           <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
         </button>
         {event && (
-          <GroupHeader 
-            event={event} 
-          />
+          <GroupHeader event={event} onClick={() => setShowGroupTabs(true)} />
         )}
       </div>
       
-      {/* Tab navigation */}
-      <div className="flex border-b border-gray-200 bg-white sticky top-16 z-30">
-        <button
-          className={`flex-1 py-3 text-sm font-medium focus:outline-none transition-colors ${activeTab === 'chat' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500'}`}
-          onClick={() => setActiveTab('chat')}
-        >
-          Chat
-        </button>
-        <button
-          className={`flex-1 py-3 text-sm font-medium focus:outline-none transition-colors ${activeTab === 'moments' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500'}`}
-          onClick={() => setActiveTab('moments')}
-        >
-          Moments
-        </button>
-        <button
-          className={`flex-1 py-3 text-sm font-medium focus:outline-none transition-colors ${activeTab === 'members' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500'}`}
-          onClick={() => setActiveTab('members')}
-        >
-          Members
-        </button>
+      {/* Chat messages with scrolling - with improved padding for keyboard */}
+      <div 
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto z-10" 
+        style={{ 
+          paddingBottom: '20px',
+          marginBottom: '80px' // Add specific margin to account for input area height
+        }}
+      >
+        <ChatMessageList 
+          messages={messages} 
+          currentUserId={user?._id} 
+          otherPhoto={event?.thumbnail} 
+          onReplyTo={handleReplyTo}
+          eventId={eventId}
+        />
       </div>
-      
-      {/* Main content area with flexible height */}
-      <div className="flex-1 flex flex-col overflow-hidden pt-2"> 
-        {activeTab === 'chat' && (
-          <>
-            {/* Chat messages with scrolling */}
-            <div className="flex-1 overflow-y-auto pb-20 z-10">
-              <ChatMessageList messages={messages} currentUserId={user?._id} otherPhoto={event?.thumbnail} />
-            </div>
-            
-            {/* Input box - position sticky instead of fixed */}
-            <div className="sticky bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 px-2 py-2">
-              <ChatInputBox onSend={handleSend} value={input} onChange={setInput} />
-            </div>
-          </>
-        )}
-        
-        {activeTab === 'moments' && (
-          <div className="flex-1 overflow-y-auto">
-            <MomentsTab eventId={eventId} />
-          </div>
-        )}
-        
-        {activeTab === 'members' && (
-          <div className="flex-1 overflow-y-auto">
-            <MembersTab members={members} event={event} />
-          </div>
-        )}
+      {/* Input box - fixed to viewport bottom for consistent behavior across webviews */}
+      <div className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-100 px-2 py-2 z-20 max-w-[600px] mx-auto">
+        <ChatInputBox 
+          onSend={handleSend} 
+          value={input} 
+          onChange={setInput} 
+          replyToMessage={replyToMessage}
+          onCancelReply={handleCancelReply}
+        />
       </div>
     </div>
   );
