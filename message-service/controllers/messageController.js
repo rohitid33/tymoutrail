@@ -9,6 +9,20 @@ exports.getMessages = async (req, res) => {
     if (!chat) return res.json([]);
     // Sort oldest→newest
     let sortedMsgs = chat.messages.sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Ensure all messages have consistent isDeleted flag
+    sortedMsgs = sortedMsgs.map(msg => {
+      // Create a plain JavaScript object from the Mongoose document
+      const plainMsg = msg.toObject();
+      
+      // Ensure deleted field is also set for backward compatibility
+      if (plainMsg.isDeleted) {
+        plainMsg.deleted = true;
+      }
+      
+      return plainMsg;
+    });
+    
     // Apply pagination only if limit is provided
     if (limit !== undefined) {
       const nLimit = Number(limit);
@@ -18,6 +32,7 @@ exports.getMessages = async (req, res) => {
     const paginated = sortedMsgs;
     res.json(paginated);
   } catch (err) {
+    console.error('Error fetching messages:', err);
     res.status(500).json({ error: 'Failed to fetch messages' });
   }
 };

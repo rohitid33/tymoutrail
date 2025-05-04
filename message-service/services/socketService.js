@@ -64,7 +64,12 @@ function setupSocket(io) {
         await chat.save();
         
         // Broadcast deletion to all clients in the room
-        io.to(eventId).emit('messageDeleted', { messageId });
+        // Include both isDeleted and deleted flags for backward compatibility
+        io.to(eventId).emit('messageDeleted', { 
+          messageId,
+          isDeleted: true,
+          deleted: true
+        });
       } catch (err) {
         console.error(`[MessageService] Failed to delete message ${messageId}:`, err);
       }
