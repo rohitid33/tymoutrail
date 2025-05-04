@@ -31,9 +31,8 @@ const CALLBACK_URL = `${API_GATEWAY_URL}/api/users/auth/google/callback`;
 
 // Define authorized origins
 const AUTHORIZED_ORIGINS = [
-  `http://localhost:${API_GATEWAY_PORT}`,
-  FRONTEND_URL,
-  process.env.API_GATEWAY_URL
+  process.env.API_GATEWAY_URL || `http://localhost:${API_GATEWAY_PORT}`,
+  FRONTEND_URL
 ];
 
 // Serialize user for the session

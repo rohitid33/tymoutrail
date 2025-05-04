@@ -36,11 +36,6 @@ const eventSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Title cannot be more than 100 characters']
   },
-  set_trending: {
-    type: Number,
-    default: 0,
-    index: true // Adding an index for faster sorting
-  },
   event_image: {
     type: String,
     trim: true
@@ -49,11 +44,6 @@ const eventSchema = new mongoose.Schema({
     type: String,
     enum: ['public', 'private'],
     default: 'public'
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'accepted', 'rejected', 'canceled'],
-    default: 'pending'
   },
   description: {
     type: String,
@@ -136,6 +126,10 @@ const eventSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     },
+    name: {
+      type: String,
+      trim: true
+    },
     joinedAt: {
       type: Date,
       default: Date.now
@@ -145,6 +139,10 @@ const eventSchema = new mongoose.Schema({
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
+    },
+    name: {
+      type: String,
+      trim: true
     },
     status: {
       type: String,
@@ -180,11 +178,6 @@ const eventSchema = new mongoose.Schema({
     trim: true
   }],
   feedback: [feedbackSchema],
-  // Array of photo URLs for event moments/photos gallery
-  photos: [{
-    type: String,
-    trim: true
-  }],
   media: [{
     type: {
       type: String,
@@ -301,6 +294,26 @@ eventSchema.methods.addAttendee = function(userId, name) {
     status: 'pending',
     joinedAt: new Date()
   });
+};
+
+// Method to remove attendee
+eventSchema.methods.removeAttendee = async function(userId) {
+  // Find if the user is an attendee
+  const attendeeIndex = this.attendees.findIndex(a => {
+    return a.userId.toString() === userId.toString();
+  });
+  
+  if (attendeeIndex === -1) {
+    throw new Error('User is not an attendee of this event');
+  }
+  
+  // Remove the attendee
+  this.attendees.splice(attendeeIndex, 1);
+  
+  // Save the updated event
+  await this.save();
+  
+  return this;
 };
 
 const Event = mongoose.model('Event', eventSchema);

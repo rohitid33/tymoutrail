@@ -74,41 +74,27 @@ const mockEvents = [
 ];
 
 // @route   GET /events/search
-// @desc    Search events with optional filtering by interests, categories, etc.
+// @desc    Search events by interests
 // @access  Public
 router.get('/search', async (req, res) => {
-  console.log(`[Event Service] Received search request with query:`, req.query);
+  console.log(`[Event Service:Step 1] Searching events by interests:`, req.query.interests);
   try {
+    // if (!req.query.interests) {
+    //   console.log(`[Event Service:Step 2] Interests parameter missing`);
+    //   return res.status(400).json({ success: false, error: 'Interests parameter is required' });
+    // }
+
+    // const interests = req.query.interests.split(',');
+    // console.log(`[Event Service:Step 3] Parsed interests:`, interests);
+
+    // Find events that match any of the interests
+    // const events = await eventController.searchEventsByInterests(interests);
     const query = req.query;
-    
-    // Handle the "Only For You" feature
-    if (query.view === 'Only For You' && query.userInterests) {
-      console.log(`[Event Service] Processing "Only For You" request with user interests`);
-      
-      // Parse user interests if they're provided as a string
-      let userInterests = query.userInterests;
-      if (typeof userInterests === 'string') {
-        try {
-          // Try to parse as JSON if it's a stringified array
-          userInterests = JSON.parse(userInterests);
-        } catch (e) {
-          // If not JSON, split by comma
-          userInterests = userInterests.split(',');
-        }
-      }
-      
-      console.log(`[Event Service] User interests for filtering:`, userInterests);
-      
-      // Update the query object with parsed interests
-      query.userInterests = userInterests;
-    }
-    
-    // Process the search request with the updated query
     const events = await eventController.searchEvents(query);
-    console.log(`[Event Service] Found ${events.length} matching events`);
+    console.log(`[Event Service:Step 4] Found ${events.length} matching events`);
     res.json({ success: true, data: events });
   } catch (err) {
-    console.error(`[Event Service] Error searching events:`, err.message);
+    console.error(`[Event Service:Step 5] Error searching events:`, err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -479,94 +465,6 @@ router.post('/:eventId/requests/:requestId/approve', auth, async (req, res) => {
 // @route   GET /events/:id/attendees
 // @desc    Get attendees for an event
 // @access  Private
-
-// @route   GET /events/:id/photos
-// @desc    Get photos for an event
-// @access  Private
-router.get('/:id/photos', auth, async (req, res) => {
-  try {
-    const event = await Event.findById(req.params.id);
-    
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        error: 'Event not found'
-      });
-    }
-    
-    // Return the photos array or an empty array if it doesn't exist
-    const photos = event.photos || [];
-    
-    res.status(200).json({
-      success: true,
-      data: photos
-    });
-  } catch (error) {
-    console.error('Error fetching event photos:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error'
-    });
-  }
-});
-
-// @route   DELETE /events/:id/attendees
-// @desc    Remove an attendee from an event
-// @access  Private (host only)
-router.delete('/:eventId/attendees', auth, async (req, res) => {
-  try {
-    const event = await Event.findById(req.params.eventId);
-    
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        error: 'Event not found'
-      });
-    }
-    
-    // Check if user is the host
-    if (event.host.userId.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Only the host can remove attendees'
-      });
-    }
-    
-    // Get the userId from the request body
-    const { userId } = req.body;
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        error: 'User ID is required'
-      });
-    }
-    
-    // Find the attendee index
-    const attendeeIndex = event.attendees.findIndex(a => a.userId.toString() === userId);
-    if (attendeeIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        error: 'User is not an attendee of this event'
-      });
-    }
-    
-    // Remove the attendee
-    event.attendees.splice(attendeeIndex, 1);
-    await event.save();
-    
-    res.status(200).json({
-      success: true,
-      message: 'Attendee removed successfully',
-      data: event
-    });
-  } catch (error) {
-    console.error('Error removing attendee:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error'
-    });
-  }
-});
 router.get('/:id/attendees', auth, async (req, res) => {
   console.log(`[Event Service:Step 1] Getting attendees for event ${req.params.id}`);
   try {
@@ -594,6 +492,52 @@ router.post('/:eventId/requests/:requestId/reject', auth, async (req, res) => {
   } catch (err) {
     console.error(`[Event Service:Step 2] Error rejecting join request:`, err.message);
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// @route   DELETE /events/:id/attendees
+// @desc    Remove an attendee from an event
+// @access  Private
+router.delete('/:id/attendees', auth, async (req, res) => {
+  console.log(`[Event Service:Step 1] Removing attendee from event ${req.params.id}`);
+  console.log(`[Event Service:Step 2] Request body:`, req.body);
+  
+  try {
+    if (!req.body.userId) {
+      return res.status(400).json({ success: false, error: 'userId is required in request body' });
+    }
+    
+    const event = await eventController.getEvent(req.params.id);
+    if (!event) {
+      return res.status(404).json({ success: false, error: 'Event not found' });
+    }
+    
+    // Check if user is authorized (must be host)
+    // The auth middleware sets req.user.id, but the event host is stored as event.host.userId
+    console.log(`[Event Service:Step 3] Auth check - User ID: ${req.user.id}, Host ID: ${event.host.userId}`);
+    
+    // Convert both IDs to strings for proper comparison
+    const userIdStr = String(req.user.id);
+    const hostIdStr = String(event.host.userId);
+    
+    console.log(`[Event Service:Step 3.1] String comparison - User ID: ${userIdStr}, Host ID: ${hostIdStr}`);
+    
+    // Only the host can remove attendees
+    if (userIdStr !== hostIdStr) {
+      console.log(`[Event Service:Step 4] Authorization failed - User is not the host`);
+      return res.status(403).json({ success: false, error: 'Not authorized to remove attendees - must be event host' });
+    }
+    
+    console.log(`[Event Service:Step 4] Authorization successful - User is the host`);
+    
+    // Remove attendee from event
+    const updatedEvent = await event.removeAttendee(req.body.userId);
+    
+    console.log(`[Event Service:Step 3] Successfully removed attendee ${req.body.userId} from event ${req.params.id}`);
+    res.json({ success: true, data: updatedEvent });
+  } catch (error) {
+    console.error(`[Event Service:Step 4] Error removing attendee:`, error.message);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
