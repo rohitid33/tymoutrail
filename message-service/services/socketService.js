@@ -1,6 +1,9 @@
 const Message = require('../models/Message');
 
 function setupSocket(io) {
+  // Track users who are typing in each event
+  const typingUsers = {};
+  
   io.on('connection', (socket) => {
     // Join event room
     socket.on('joinEvent', (eventId) => {
@@ -92,7 +95,82 @@ function setupSocket(io) {
         console.error(`[MessageService] Failed to mark delivered ${messageId}:`, err);
       }
     });
+
+    // Handle typing status
+    socket.on('typing', ({ eventId, userId, userName, isTyping }) => {
+      if (!eventId || !userId) return;
+      
+      // Initialize typing users for this event if needed
+      if (!typingUsers[eventId]) {
+        typingUsers[eventId] = {};
+      }
+      
+      if (isTyping) {
+        // Add user to typing list
+        typingUsers[eventId][userId] = {
+          id: userId,
+          name: userName || 'Someone',
+          timestamp: Date.now()
+        };
+      } else {
+        // Remove user from typing list
+        delete typingUsers[eventId][userId];
+      }
+      
+      // Broadcast updated typing status to all users in the room except sender
+      const currentlyTyping = Object.values(typingUsers[eventId] || {});
+      socket.to(eventId).emit('typingStatus', { users: currentlyTyping });
+    });
+    
+    // Clean up typing status when user disconnects
+    socket.on('disconnect', () => {
+      // Since we don't store which rooms each socket is in, we need to check all events
+      Object.keys(typingUsers).forEach(eventId => {
+        let updated = false;
+        
+        // Check if any typing status is older than 5 seconds and remove it
+        const now = Date.now();
+        Object.keys(typingUsers[eventId]).forEach(userId => {
+          if (now - typingUsers[eventId][userId].timestamp > 5000) {
+            delete typingUsers[eventId][userId];
+            updated = true;
+          }
+        });
+        
+        // If we removed any stale typing indicators, broadcast the update
+        if (updated) {
+          const currentlyTyping = Object.values(typingUsers[eventId] || {});
+          io.to(eventId).emit('typingStatus', { users: currentlyTyping });
+        }
+      });
+    });
   });
+  
+  // Set up a cleanup interval for typing status
+  setInterval(() => {
+    let updated = false;
+    const now = Date.now();
+    
+    Object.keys(typingUsers).forEach(eventId => {
+      Object.keys(typingUsers[eventId]).forEach(userId => {
+        // Remove typing status older than 5 seconds
+        if (now - typingUsers[eventId][userId].timestamp > 5000) {
+          delete typingUsers[eventId][userId];
+          updated = true;
+        }
+      });
+      
+      // If typing list is empty, clean up the event entry
+      if (Object.keys(typingUsers[eventId]).length === 0) {
+        delete typingUsers[eventId];
+      } else if (updated) {
+        // If we removed any stale typing indicators, broadcast the update
+        const currentlyTyping = Object.values(typingUsers[eventId] || {});
+        io.to(eventId).emit('typingStatus', { users: currentlyTyping });
+      }
+    });
+  }, 5000); // Check every 5 seconds
 }
+
 
 module.exports = setupSocket;
