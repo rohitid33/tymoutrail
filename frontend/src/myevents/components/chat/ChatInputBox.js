@@ -1,22 +1,16 @@
 import React from 'react';
 import EmojiPickerButton from './EmojiPickerButton';
 
-const ChatInputBox = ({ onSend, value, onChange, replyToMessage, onCancelReply }) => {
+const ChatInputBox = ({ onSend, value, onChange, replyToMessage, onCancelReply, onTyping }) => {
   const inputRef = React.useRef();
-  
-  // Enhanced send handler with focus management
-  const handleSend = () => {
-    if (!value.trim()) return;
+  const handleSend = (e) => {
+    // Prevent default to avoid keyboard dismissal
+    if (e) e.preventDefault();
     
-    // Send the message
-    onSend(value);
-    
-    // Keep focus on the input after sending
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, 0);
+    // Only send if there's content
+    if (value && value.trim()) {
+      onSend(value);
+    }
   };
 
   // Insert emoji at cursor position
@@ -51,7 +45,7 @@ const ChatInputBox = ({ onSend, value, onChange, replyToMessage, onCancelReply }
                 'Unknown'}
               </span>
             </div>
-            <div className="text-sm truncate text-gray-700 mt-1">
+            <div className="text-sm text-gray-700 mt-1 max-h-20 overflow-y-auto break-words whitespace-pre-wrap">
               {replyToMessage.text || '[deleted]'}
             </div>
           </div>
@@ -79,28 +73,35 @@ const ChatInputBox = ({ onSend, value, onChange, replyToMessage, onCancelReply }
           onChange(e.target.value);
           e.target.style.height = 'auto';
           e.target.style.height = e.target.scrollHeight + 'px';
+          // Trigger typing indicator when user types
+          if (onTyping) onTyping(e.target.value.length > 0);
+        }}
+        onBlur={() => {
+          // Stop typing indicator when input loses focus
+          if (onTyping) onTyping(false);
         }}
         onKeyDown={e => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            if (value.trim()) {
-              // Send the message
-              onSend(value);
-              
-              // Ensure we maintain focus on the input
-              setTimeout(() => {
-                if (inputRef.current) {
-                  inputRef.current.focus();
-                }
-              }, 0);
-            }
+            onSend(value);
           }
         }}
         style={{lineHeight: '1.5'}}
       />
       <button
         className="btn btn-primary flex-shrink-0 flex items-center justify-center"
-        onClick={handleSend}
+        onTouchStart={(e) => {
+          // Prevent default behavior on touch start
+          e.preventDefault();
+        }}
+        onMouseDown={(e) => {
+          // Prevent default behavior on mouse down
+          e.preventDefault();
+        }}
+        onClick={(e) => {
+          // Handle the click with preventDefault
+          handleSend(e);
+        }}
         type="button"
         aria-label="Send message"
       >

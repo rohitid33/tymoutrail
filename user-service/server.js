@@ -85,7 +85,7 @@ const googleAuthRoutes = require('./routes/googleAuth');
 const currentUserRoutes = require('./routes/currentUser');
 
 // Health check endpoint for Railway deployment
-app.use('/health', (req, res) => {
+app.get('/health', (req, res) => {
   console.log('[User Service:Server] Health check requested');
   res.status(200).json({ status: 'ok', service: 'user-service' });
 });
@@ -177,9 +177,9 @@ app.get('/test-db', async (req, res) => {
 });
 
 // Health check endpoint
-// app.get('/health', (req, res) => {
-//   res.status(200).json({ status: 'ok', service: 'user-service' });
-// });
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', service: 'user-service' });
+});
 
 // Add error handling middleware
 app.use((err, req, res, next) => {

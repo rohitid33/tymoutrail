@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useOAuthVerification } from '../hooks/queries/useAuthQueries';
 import { useAuthStore } from '../stores/authStore';
 
-// Following Single Responsibility Principle - this component only handles auth callback
+// Following Single Responsibility Principle - this component only handles auth commit callback
 const AuthSuccess = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -17,9 +17,10 @@ const AuthSuccess = () => {
 
   useEffect(() => {
     const processAuth = async () => {
-      // Extract token from URL query parameters
+      // Extract tokens from URL query parameters
       const query = new URLSearchParams(location.search);
       const token = query.get('token');
+      const refreshToken = query.get('refreshToken');
       
       if (!token) {
         console.error('No token found in URL');
@@ -28,9 +29,9 @@ const AuthSuccess = () => {
         return;
       }
 
-      console.log('Token found in URL, verifying with backend...');
-      // Call the mutation function
-      verifyOAuth(token);
+      console.log('Tokens found in URL, verifying with backend...');
+      // Call the mutation function with both tokens
+      verifyOAuth({ token, refreshToken });
     };
 
     processAuth();
@@ -42,19 +43,10 @@ const AuthSuccess = () => {
       console.log('Authentication successful, checking profile completeness');
       const user = useAuthStore.getState().user;
       
-      // Check if there's a pending event ID from a join request
-      const pendingEventId = localStorage.getItem('pendingEventId');
-      
       // Check if this is a new user or profile is incomplete
       if (user && user.completeness < 50) {
         console.log('Profile incomplete, redirecting to onboarding');
         navigate('/onboarding');
-      } else if (pendingEventId) {
-        // If there was a pending event join request, redirect to that event
-        console.log('Redirecting to pending event:', pendingEventId);
-        // Clear the pending event ID
-        localStorage.removeItem('pendingEventId');
-        navigate(`/events/${pendingEventId}`);
       } else {
         console.log('Profile complete, redirecting to explore');
         navigate('/explore');

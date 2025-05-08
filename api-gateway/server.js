@@ -7,7 +7,7 @@ const dotenv = require('dotenv');
 const session = require('express-session');
 
 // Load environment variables
-dotenv.config({ path: process.env.NODE_ENV === 'production' ? './.env' : '../.env' });
+dotenv.config({ path: '../.env' });
 
 // Following Single Responsibility Principle - server.js only handles server setup and routing
 const app = express();
@@ -63,7 +63,7 @@ app.use('/api/users', createProxyMiddleware({
   pathRewrite: {'^/api/users': ''},
   // Enable cookies for Google OAuth
   cookieDomainRewrite: {
-    '*': process.env.NODE_ENV === 'production' ? '.railway.app' : 'localhost'
+    '*': process.env.FRONTEND_URL || 'http://localhost:3010'
   },
   // Configure proxy options
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
@@ -267,7 +267,7 @@ app.use('/api/partnerships', createProxyMiddleware({
 }));
 
 // Health check endpoint
-app.use('/health', (req, res) => {
+app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'api-gateway' });
 });
 

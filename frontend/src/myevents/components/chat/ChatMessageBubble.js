@@ -1,4 +1,5 @@
-import React, { useState, useRef, forwardRef } from 'react';
+import React, { useState, useRef, forwardRef, useMemo } from 'react';
+import { getColorForName } from './name-colors';
 
 const LONG_PRESS_DURATION = 600; // ms
 
@@ -13,6 +14,17 @@ const ChatMessageBubble = forwardRef(({ message, isOwn, userPhoto, onDelete, onR
     }
     return fullName.charAt(0).toUpperCase();
   };
+  
+  // Get consistent color for sender
+  const senderIdentifier = useMemo(() => {
+    if (isOwn) return 'me';
+    return message.senderId || 
+           (typeof message.sender === 'object' ? (message.sender._id || message.sender.id) : message.sender) || 
+           message.senderName || 
+           'unknown';
+  }, [isOwn, message]);
+  
+  const senderColorClass = useMemo(() => getColorForName(senderIdentifier), [senderIdentifier]);
   const [pressTimer, setPressTimer] = useState(null);
   const touchRef = useRef();
 
@@ -90,23 +102,27 @@ const ChatMessageBubble = forwardRef(({ message, isOwn, userPhoto, onDelete, onR
               <polyline points="9 17 4 12 9 7"></polyline>
               <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
             </svg>
-            <span className="truncate max-w-[180px]">
+            <div className="flex flex-col w-full overflow-hidden">
               <span className="font-medium">
                 {message.replyTo.senderName || 
                   (typeof message.replyTo.sender === 'object' && 
                     (message.replyTo.sender.name || message.replyTo.sender.username)) || 
                   'Unknown'}:
-              </span>{' '}
-              {message.replyTo.text?.substring(0, 30) || '[deleted]'}
-              {message.replyTo.text?.length > 30 ? '...' : ''}
-            </span>
+              </span>
+              <span className="text-xs whitespace-normal break-words">
+                {message.replyTo.text || '[deleted]'}
+              </span>
+            </div>
           </div>
         )}
         
-        {/* Message bubble */}
+        {/* Message bubble with glass effect */}
         <div
-          className={`rounded-lg px-3 py-2 text-base shadow component-card break-words whitespace-pre-line ${isOwn ? 'bg-theme-accent text-white' : 'bg-gray-100 text-gray-900'} relative`}
-          style={isOwn ? { color: '#fff', backgroundColor: 'var(--color-theme-accent, #2563eb)' } : {}}
+          className={`rounded-lg px-3 py-2 text-base break-words whitespace-pre-line relative ${
+            isOwn 
+              ? 'chat-bubble-glass-own text-white' 
+              : 'chat-bubble-glass text-gray-900'
+          }`}
           aria-label={isOwn ? 'Your message' : 'Member message'}
           onContextMenu={handleContextMenu}
           onTouchStart={handleTouchStart}
@@ -120,7 +136,7 @@ const ChatMessageBubble = forwardRef(({ message, isOwn, userPhoto, onDelete, onR
           onClick={handleReplyClick}
         >
           {/* Sender name above bubble */}
-          <div className={`text-xs mb-1 font-medium ${isOwn ? 'text-right text-theme-accent' : 'text-left text-gray-700'}`}>
+          <div className={`text-xs mb-1 font-medium ${isOwn ? 'text-right text-indigo-100' : `text-left ${senderColorClass}`}`}>
             {isOwn ? 'You' : (
               message.senderName ||
               (typeof message.sender === 'object' && (message.sender.name || message.sender.username || message.sender.email || message.sender._id || message.sender.id)) ||
@@ -133,11 +149,11 @@ const ChatMessageBubble = forwardRef(({ message, isOwn, userPhoto, onDelete, onR
               ? <span className="italic text-gray-400">This message was deleted</span>
               : (<span className="break-words">{message.text || <span className="text-red-500">[Empty]</span>}</span>)}
           </div>
-          <div className="text-xs text-gray-400 mt-1 text-right flex items-center gap-1 justify-end">
+          <div className={`text-xs mt-1 text-right flex items-center gap-1 justify-end ${isOwn ? 'text-indigo-100' : 'text-gray-500'}`}>
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             {isOwn && !(message.isDeleted || message.deleted) && (
               message.pending || message.status === 'pending' ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-indigo-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               ) : message.status === 'sent' || !message.status ? (

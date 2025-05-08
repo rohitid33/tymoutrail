@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import axios from 'axios';
 import { useAuthStore } from '../../stores/authStore';
 import { v4 as uuidv4 } from 'uuid';
+import { debounce } from 'lodash';
 
 const SOCKET_URL = process.env.REACT_APP_CHAT_SERVICE_URL || 'http://localhost:3020'; // Change to your backend address if needed
 const API_URL = `${process.env.REACT_APP_CHAT_SERVICE_URL || 'http://localhost:3020'}/api/messages`;
@@ -13,27 +14,14 @@ const cacheKey = (eventId) => `chat-${eventId}`;
 // useChatSocket: Real-time messaging with REST history
 export function useChatSocket(eventId) {
   const [messages, setMessages] = useState([]);
+  const [typingUsers, setTypingUsers] = useState([]);
   const socketRef = useRef(null);
   const user = useAuthStore(state => state.user);
+  const isTypingRef = useRef(false);
 
   // Fetch chat history on mount/eventId change
   useEffect(() => {
     if (!eventId) return;
-    
-    // First, try to load from session cache for immediate display
-    const cached = sessionStorage.getItem(cacheKey(eventId));
-    if (cached) {
-      try { 
-        const cachedMessages = JSON.parse(cached);
-        console.log(`[useChatSocket] Loaded ${cachedMessages.length} cached messages for event ${eventId}`);
-        setMessages(cachedMessages); 
-      } catch (e) { 
-        console.error('[useChatSocket] Error parsing cached messages:', e);
-      }
-    }
-    
-    // Then fetch fresh data from API
-    console.log(`[useChatSocket] Fetching messages for event ${eventId}`);
     axios.get(`${API_URL}/${eventId}`)
       .then(res => {
         // Normalize all messages to ensure sender field exists
@@ -51,28 +39,22 @@ export function useChatSocket(eventId) {
               } : null
             }))
           : [];
-        
-        console.log(`[useChatSocket] Fetched ${normalizedMsgs.length} messages from API for event ${eventId}`);
         setMessages(normalizedMsgs);
-        
-        // Update session cache with fresh data
-        try {
-          sessionStorage.setItem(cacheKey(eventId), JSON.stringify(normalizedMsgs));
-        } catch (e) {
-          console.error('[useChatSocket] Error caching messages:', e);
-        }
       })
-      .catch(error => {
-        console.error('[useChatSocket] Error fetching messages:', error);
-        if (!cached) setMessages([]);
-      });
+      .catch(() => setMessages([]));
     
     // Clear messages when changing events
     return () => setMessages([]);
   }, [eventId]);
 
-  // This effect is no longer needed as we're loading from cache in the main fetch effect
-  // Keeping this comment for reference
+  // Load from session cache first for instant render
+  useEffect(() => {
+    if (!eventId) return;
+    const cached = sessionStorage.getItem(cacheKey(eventId));
+    if (cached) {
+      try { setMessages(JSON.parse(cached)); } catch { /* ignore */ }
+    }
+  }, [eventId]);
 
   // Setup socket connection
   useEffect(() => {
@@ -80,6 +62,13 @@ export function useChatSocket(eventId) {
     const socket = io(SOCKET_URL);
     socketRef.current = socket;
     socket.emit('joinEvent', eventId);
+    
+    // Listen for typing status updates
+    socket.on('typingStatus', ({ users }) => {
+      if (!Array.isArray(users)) return;
+      setTypingUsers(users);
+    });
+    
     socket.on('newMessage', (msg) => {
       if (!msg) return; // safeguard
       // Normalize message to ensure sender field exists and properly handle replyTo
@@ -115,29 +104,10 @@ export function useChatSocket(eventId) {
         // If this is a message we sent and it's pending, replace the pending message
         const pendingIndex = prev.findIndex(m => m.pending && m._id.startsWith('temp-'));
         if (pendingIndex !== -1 && normalizedMsg.senderId === user._id) {
-          const newMessages = [...prev.slice(0, pendingIndex), normalizedMsg, ...prev.slice(pendingIndex + 1)];
-          
-          // Trigger a custom event to notify components that a new message was received
-          setTimeout(() => {
-            const event = new CustomEvent('newMessageReceived', { detail: { isNewMessage: true } });
-            window.dispatchEvent(event);
-            console.log('[useChatSocket] Dispatched newMessageReceived event (replaced pending)');
-          }, 0);
-          
-          return newMessages;
+          return [...prev.slice(0, pendingIndex), normalizedMsg, ...prev.slice(pendingIndex + 1)];
         }
         
-        // This is a completely new message
-        const newMessages = [...prev, normalizedMsg];
-        
-        // Trigger a custom event to notify components that a new message was received
-        setTimeout(() => {
-          const event = new CustomEvent('newMessageReceived', { detail: { isNewMessage: true } });
-          window.dispatchEvent(event);
-          console.log('[useChatSocket] Dispatched newMessageReceived event (new message)');
-        }, 0);
-        
-        return newMessages;
+        return [...prev, normalizedMsg];
       });
       
       // send delivered ack if message from others
@@ -189,6 +159,7 @@ export function useChatSocket(eventId) {
       socket.off('messageDeleted');
       socket.off('sentAck');
       socket.off('statusUpdate');
+      socket.off('typingStatus');
       socket.disconnect();
     };
   }, [eventId, user]);
@@ -227,13 +198,6 @@ export function useChatSocket(eventId) {
     // Add the message to the local state immediately
     setMessages(prev => [...prev, tempMessage]);
     
-    // Trigger a custom event to notify components that a new message was sent
-    setTimeout(() => {
-      const event = new CustomEvent('newMessageReceived', { detail: { isNewMessage: true, isSent: true } });
-      window.dispatchEvent(event);
-      console.log('[useChatSocket] Dispatched newMessageReceived event (message sent)');
-    }, 0);
-    
     // Emit message with reply metadata
     socketRef.current.emit('sendMessage', {
       eventId,
@@ -248,21 +212,9 @@ export function useChatSocket(eventId) {
   }, [eventId, user]);
 
   // Delete message
-  const deleteMessage = useCallback(async (messageId) => {
-    if (!eventId || !messageId) return;
-    try {
-      // Emit deleteMessage event to the socket
-      if (socketRef.current) {
-        socketRef.current.emit('deleteMessage', { eventId, messageId });
-      } else {
-        // Fallback to REST API if socket isn't available
-        await axios.patch(`${API_URL}/${eventId}/${messageId}/delete`);
-      }
-      // UI will update via socket 'messageDeleted' event
-    } catch (err) {
-      // Optionally handle error
-      console.error('Failed to delete message', err);
-    }
+  const deleteMessage = useCallback((messageId) => {
+    if (!socketRef.current || !messageId) return;
+    socketRef.current.emit('deleteMessage', { eventId, messageId });
   }, [eventId]);
 
   // Persist messages to sessionStorage whenever they change
@@ -273,10 +225,85 @@ export function useChatSocket(eventId) {
     } catch {}
   }, [messages, eventId]);
 
+  // Create a ref to store the debounced function instance
+  const debouncedFnRef = useRef(null);
+  
+  // Initialize the debounced function once
+  useEffect(() => {
+    // Create the debounced function
+    const debouncedFn = debounce((socket, eventId, userId, userName, typingRef) => {
+      if (!socket || !typingRef?.current) return;
+      socket.emit('typing', {
+        eventId,
+        userId,
+        userName,
+        isTyping: false
+      });
+      if (typingRef) typingRef.current = false;
+    }, 2000);
+    
+    // Store it in the ref
+    debouncedFnRef.current = debouncedFn;
+    
+    // Clean up on unmount
+    return () => {
+      if (debouncedFnRef.current?.cancel) {
+        debouncedFnRef.current.cancel();
+      }
+    };
+  }, []);
+  
+  // Send typing status - debounced to avoid flooding
+  const debouncedStopTyping = useCallback(() => {
+    if (!socketRef.current || !user || !isTypingRef.current || !debouncedFnRef.current) return;
+    debouncedFnRef.current(
+      socketRef.current, 
+      eventId, 
+      user?._id, 
+      user?.name, 
+      isTypingRef
+    );
+  }, [eventId, user]);
+
+  // Update typing status
+  const updateTypingStatus = useCallback((isTyping) => {
+    if (!socketRef.current || !user) return;
+    
+    // Only emit if status changed to avoid unnecessary events
+    if (isTyping && !isTypingRef.current) {
+      socketRef.current.emit('typing', {
+        eventId,
+        userId: user._id,
+        userName: user.name,
+        isTyping: true
+      });
+      isTypingRef.current = true;
+    }
+    
+    if (isTyping) {
+      // Reset the debounce timer each time user types
+      debouncedStopTyping();
+    } else if (isTypingRef.current) {
+      // Immediately stop typing indicator if explicitly set to false
+      if (debouncedFnRef.current?.cancel) {
+        debouncedFnRef.current.cancel();
+      }
+      socketRef.current.emit('typing', {
+        eventId,
+        userId: user._id,
+        userName: user.name,
+        isTyping: false
+      });
+      isTypingRef.current = false;
+    }
+  }, [eventId, user, debouncedStopTyping]);
+
   return {
     messages,
     sendMessage,
     deleteMessage,
     setMessages,
+    typingUsers,
+    updateTypingStatus
   };
 }
