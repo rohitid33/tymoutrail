@@ -24,6 +24,8 @@ const configureAxiosAuthInterceptor = (token) => {
     (config) => {
       if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
+        // Ensure credentials are included in cross-origin requests
+        config.withCredentials = true;
       }
       return config;
     },
