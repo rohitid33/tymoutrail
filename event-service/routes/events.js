@@ -13,6 +13,70 @@ router.use((req, res, next) => {
   next();
 });
 
+// GET endpoint for fetching events by host ID
+router.get('/host/:userId', async (req, res) => {
+  try {
+    console.log(`[Event Service] Fetching events for host with ID: ${req.params.userId}`);
+    
+    // Find events where the host.userId matches the provided userId
+    const events = await Event.find({
+      'host.userId': req.params.userId
+    }).sort({ 'date.start': -1 }); // Sort by start date, most recent first
+    
+    console.log(`[Event Service] Found ${events.length} events for host`);
+    
+    res.status(200).json({
+      success: true,
+      data: events
+    });
+  } catch (error) {
+    console.error(`[Event Service] Error fetching host events:`, error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
+
+// DELETE endpoint for deleting an event
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    console.log(`[Event Service] Deleting event with ID: ${req.params.id}`);
+    
+    // Get the event to check ownership
+    const event = await eventController.getEvent(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    // Check if user is authorized to delete this event
+    const userId = req.user.id;
+    let isAuthorized = false;
+    
+    // Check if the host is stored as an object with a userId property
+    if (event.host && event.host.userId) {
+      isAuthorized = event.host.userId.toString() === userId;
+    } else if (event.host) {
+      // Fallback to the original check if host is not stored as an object
+      isAuthorized = event.host.toString() === userId;
+    }
+    
+    if (!isAuthorized) {
+      return res.status(403).json({ message: 'User not authorized to delete this event' });
+    }
+    
+    // Delete the event
+    await eventController.deleteEvent(req.params.id, userId);
+    
+    res.status(200).json({ message: 'Event deleted successfully' });
+  } catch (error) {
+    console.error(`[Event Service] Error deleting event:`, error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Middleware for authentication (in a real app, this would verify JWT tokens)
 // Following Single Responsibility Principle - auth middleware only handles authentication
 const authMiddleware = (req, res, next) => {

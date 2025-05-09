@@ -22,7 +22,8 @@ router.get(
   },
   passport.authenticate('google', { 
     scope: ['profile', 'email'],
-    prompt: 'consent' 
+    prompt: 'select_account',
+    accessType: 'offline'
   })
 );
 
@@ -36,10 +37,24 @@ router.get(
     console.log('Query parameters:', req.query);
     next();
   },
-  passport.authenticate('google', { 
-    failureRedirect: `${FRONTEND_URL}/login?error=auth_failed`,
-    session: true
-  }),
+  (req, res, next) => {
+    // Custom error handler for Passport authentication
+    passport.authenticate('google', { session: false }, (err, user, info) => {
+      if (err) {
+        console.error('Google authentication error:', err);
+        return res.redirect(`${FRONTEND_URL}/login?error=auth_error&message=${encodeURIComponent(err.message)}`);
+      }
+      
+      if (!user) {
+        console.error('Authentication failed:', info);
+        return res.redirect(`${FRONTEND_URL}/login?error=auth_failed`);
+      }
+      
+      // Authentication successful, set user in request object
+      req.user = user;
+      next();
+    })(req, res, next);
+  },
   (req, res) => {
     try {
       console.log('Google auth callback successful');

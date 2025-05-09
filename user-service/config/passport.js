@@ -59,7 +59,8 @@ passport.use(
       callbackURL: CALLBACK_URL,
       proxy: true,
       accessType: 'offline',
-      prompt: 'consent',
+      // Remove prompt from here as it's already in the auth route
+      // prompt: 'consent',
       // Add these options to help with token issues
       passReqToCallback: true,
       userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo'

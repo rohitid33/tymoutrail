@@ -36,6 +36,16 @@ const eventSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Title cannot be more than 100 characters']
   },
+  status: {
+    type: String,
+    enum: ['pending', 'accepted', 'rejected', 'cancelled'],
+    default: 'pending'
+  },
+  set_trending: {
+    type: String,
+    enum: ['Date Night', 'Food For thought'],
+    default: 'Food For thought'
+  },
   event_image: {
     type: String,
     trim: true
