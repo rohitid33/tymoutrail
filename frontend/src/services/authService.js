@@ -1,5 +1,8 @@
 import axios from 'axios';
 
+// Configure axios defaults for cross-origin requests
+axios.defaults.withCredentials = true;
+
 /**
  * Service for managing authentication-related API requests
  * Following Single Responsibility Principle - this service only handles auth operations
@@ -83,6 +86,21 @@ const authService = {
       return response.data;
     } catch (error) {
       console.error('OAuth verification error:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Refresh the access token using a refresh token
+   * @param {string} refreshToken - The refresh token
+   * @returns {Promise<Object>} New authentication data with user and token
+   */
+  refreshToken: async (refreshToken) => {
+    try {
+      const response = await axios.post('/api/users/auth/refresh-token', { refreshToken });
+      return response.data.data; // Extract the data from the response
+    } catch (error) {
+      console.error('Token refresh error:', error);
       throw error;
     }
   }
