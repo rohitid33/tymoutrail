@@ -23,10 +23,22 @@ const MyEventTicketCard = ({ event, isPending = false }) => {
     ? (event.location.type === 'physical' ? event.location.city : 'Online Event')
     : 'Location not available'; // Fallback if location is missing
 
-  const handleClick = () => {
-    // Don't navigate if the event is pending
-    if (isPending) return;
+  // Create a formatted location with access type
+  const locationWithAccess = () => {
+    const accessType = event.access === 'private' ? 
+      <span className="inline-block bg-rose-100 text-rose-700 text-xs font-semibold px-2 py-0.5 rounded-full mr-1">Private</span> : 
+      event.access === 'public' ? 
+      <span className="inline-block bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded-full mr-1">Public</span> : 
+      null;
     
+    return (
+      <>
+        {accessType} {formattedLocation}
+      </>
+    );
+  };
+
+  const handleClick = () => {
     navigate(`/myevents/${event._id}/chat`);
   };
   const [copied, setCopied] = useState(false);
@@ -131,26 +143,38 @@ const MyEventTicketCard = ({ event, isPending = false }) => {
         <img
           src={event.event_image}
           alt={event.title}
-          className="w-12 h-12 rounded object-cover border border-gray-200 bg-gray-50"
+          className="w-14 h-14 rounded object-cover border border-gray-200 bg-gray-50"
           loading="lazy"
         />
         <div className="flex-1">
-          {/* Show event type as tag/pill above title */}
-          {event.access === 'private' && (
-            <span className="inline-block bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full mb-1 mr-1">
-              Private Table
-            </span>
-          )}
-          {event.access === 'public' && (
-            <span className="inline-block bg-indigo-100 text-indigo-700 text-xs font-semibold px-2 py-0.5 rounded-full mb-1 mr-1">
-              Public Table
-            </span>
-          )}
-          <div className="font-semibold text-base text-primary mb-0.5">{event.title}</div>
+          <div className="flex justify-between items-center">
+            <div className="font-semibold text-base text-primary mb-0.5">{event.title}</div>
+            {!isPending && !isPastEvent && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent card click
+                  handleCopyLink(e);
+                }}
+                className={`flex items-center justify-center py-1 px-2.5 rounded text-sm font-medium transition ${copied ? 'bg-green-100 text-green-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+              >
+                {copied ? (
+                  <>
+                    <FaCheck className="mr-1" size={12} />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <FaShare className="mr-1" size={12} />
+                    Share
+                  </>
+                )}
+              </button>
+            )}
+          </div>
           {/* Use the formatted date and location strings */}
-          <div className="text-gray-500 text-xs mb-0.5">{formattedDate} &bull; {formattedLocation}</div>
+          <div className="text-gray-500 text-xs mb-0.5">{formattedDate} &bull; {locationWithAccess()}</div>
           <div className="text-xs text-theme-accent"><span className="font-mono">{event.ticketCode}</span></div>
-          <div className="text-xs text-green-600 mt-0.5">{event.status}</div>
+          {/* Removed status display */}
         </div>
       </div>
       
@@ -167,24 +191,7 @@ const MyEventTicketCard = ({ event, isPending = false }) => {
           <FaComment className="mr-1" size={12} />
           Give Feedback
         </button>
-      ) : (
-        <button
-          onClick={handleCopyLink}
-          className={`mt-2 self-end flex items-center justify-center py-1 px-3 rounded text-sm font-medium transition ${copied ? 'bg-green-100 text-green-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
-        >
-          {copied ? (
-            <>
-              <FaCheck className="mr-1" size={12} />
-              Copied!
-            </>
-          ) : (
-            <>
-              <FaShare className="mr-1" size={12} />
-              Share Link
-            </>
-          )}
-        </button>
-      )}
+      ) : null}
       
       {/* Feedback Modal */}
       {showFeedbackModal && (

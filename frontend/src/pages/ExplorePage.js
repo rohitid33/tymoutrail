@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useScrollToElement } from '../hooks/stores/useUIStoreHooks';
 import { useExploreSearch } from '../hooks/queries/useExploreQueries';
 import { useUserData } from '../hooks/stores/useAuthStoreHooks';
-import axios from 'axios';
 
 // Import our separate components
 import ExploreSearch from '../components/explore/ExploreSearch';
@@ -30,6 +29,19 @@ const ExplorePage = () => {
   // State for user interests
   const [userInterests, setUserInterests] = useState([]);
   
+  // State for hero image loading
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
+  
+  // State to track current hero image index
+  const [currentHeroImageIndex, setCurrentHeroImageIndex] = useState(0);
+  
+  // Hero images array - wrapped in useMemo to prevent re-creation on every render
+  const heroImages = useMemo(() => [
+    "/hero/hero0.jpg",
+    "/hero/hero1.jpg",
+    "/hero/hero2.jpg"
+  ], []);
+
   // Extract filter parameters from URL
   const searchQuery = searchParams.get('q') || '';
   const selectedTags = searchParams.getAll('tag');
@@ -77,6 +89,54 @@ const ExplorePage = () => {
     userInterests: activeSpecialTag === 'Only For You' ? userInterests : [] // Include user interests if 'Only For You' is selected
   });
 
+  // Set up image rotation interval
+  useEffect(() => {
+    const handleHeroImageLoad = () => {
+      setHeroImageLoaded(true);
+    };
+    
+    // Set initial image as loaded if it's already cached
+    const initialImg = new Image();
+    initialImg.src = heroImages[currentHeroImageIndex];
+    initialImg.onload = handleHeroImageLoad;
+    
+    if (initialImg.complete) {
+      handleHeroImageLoad();
+    }
+    
+    // Set up image rotation interval - changed from 7 seconds to 1 second
+    const rotationInterval = setInterval(() => {
+      setCurrentHeroImageIndex((prevIndex) => (prevIndex + 1) % heroImages.length);
+      // Reset loading state for smooth transition
+      setHeroImageLoaded(false);
+    }, 2000); // Change image every 2 second
+    
+    return () => clearInterval(rotationInterval);
+  }, [heroImages, currentHeroImageIndex]);
+
+  // Handle image change and preload next image
+  useEffect(() => {
+    const handleHeroImageLoad = () => {
+      setHeroImageLoaded(true);
+    };
+    
+    const img = new Image();
+    img.src = heroImages[currentHeroImageIndex];
+    img.onload = handleHeroImageLoad;
+    
+    if (img.complete) {
+      handleHeroImageLoad();
+    }
+  }, [currentHeroImageIndex, heroImages]);
+
+  // Preload all hero images
+  useEffect(() => {
+    // Preload all images
+    heroImages.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, [heroImages]);
 
   // Handle scroll position restoration
   useEffect(() => {
@@ -210,22 +270,71 @@ const ExplorePage = () => {
     }
   };
 
+  // State for tag scroll animation control
+  const [hasAutoScrolled, setHasAutoScrolled] = useState(false);
+  const tagScrollRef = useRef(null);
+  
+  // Auto-scroll the tag container once on initial render
+  useEffect(() => {
+    if (!hasAutoScrolled && tagScrollRef.current) {
+      // Delay to ensure the component is fully rendered
+      const timer = setTimeout(() => {
+        const scrollContainer = tagScrollRef.current;
+        
+        // Get the max scroll width
+        const maxScrollWidth = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+        
+        // Only auto-scroll if there's overflow content
+        if (maxScrollWidth > 0) {
+          // Create smooth scroll animation to middle then back
+          const scrollToMiddle = () => {
+            // Scroll to approximately middle (adjusted based on container width)
+            const scrollTarget = Math.min(maxScrollWidth * 0.4, 200);
+            
+            // Smooth scroll animation
+            scrollContainer.scrollTo({
+              left: scrollTarget,
+              behavior: 'smooth'
+            });
+            
+            // After scrolling to middle, scroll back to start
+            setTimeout(() => {
+              scrollContainer.scrollTo({
+                left: 0,
+                behavior: 'smooth'
+              });
+              setHasAutoScrolled(true);
+            }, 1200);
+          };
+          
+          scrollToMiddle();
+        } else {
+          setHasAutoScrolled(true);
+        }
+      }, 800);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [hasAutoScrolled]);
+
   return (
     <>
       <style>{`
-        /* Hero image edge-to-edge styles */
+        /* Hero image styles */
         .hero-full-bleed {
-          width: 100vw !important;
-          max-width: 100vw !important;
-          margin-left: calc(-50vw + 50%) !important;
-          margin-right: calc(-50vw + 50%) !important;
+          width: calc(100% - 0.001rem) !important;
+          max-width: 100% !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
           margin-top: -80px !important; /* Negative margin to offset header height */
           padding-top: 0 !important;
           z-index: 1 !important;
-          left: 0 !important;
-          right: 0 !important;
-          top: 0 !important;
           padding: 0 !important;
+          position: relative !important;
+          box-sizing: border-box !important;
+          border-radius: 12px !important;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+          overflow: hidden !important;
         }
         
         /* Base page resets */
@@ -252,42 +361,111 @@ const ExplorePage = () => {
           margin-right: 0.5rem;
           flex-shrink: 0;
         }
+
+        /* Hero image skeleton loader */
+        .skeleton-loader {
+          background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+          background-size: 200% 100%;
+          animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+
+        .hero-image {
+          opacity: 0;
+          transition: opacity 0.5s ease-in-out;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+        }
+
+        .hero-image.loaded {
+          opacity: 1;
+        }
+        
+        .hero-container {
+          position: relative;
+          width: 100%;
+          height: 100%;
+        }
+        
+        /* City selector overlay styles */
+        .city-selector-container {
+          background-color: rgba(255, 255, 255, 0.20);
+          backdrop-filter: blur(8px);
+          border-radius: 24px;
+          padding: 8px 16px;
+          display: flex;
+          align-items: center;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          border: 1px solid rgba(79, 70, 229, 0.2);
+          box-shadow: 0 2px 10px rgba(79, 70, 229, 0.1);
+        }
+        
+        .city-selector-container:hover {
+          background-color: rgba(255, 255, 255, 0.30);
+          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+          border: 1px solid rgba(79, 70, 229, 0.3);
+        }
       `}</style>
       
       {/* City Selector - positioned at the very top of the page */}
-      <div className="w-full bg-transparent py-2 px-4 mb-2 sticky top-0 z-50">
+      <div className="w-full bg-transparent py-1 px-4 mb-0 sticky top-0 z-30">
         <div className="flex justify-start">
-          <CitySelector 
-            currentCity={selectedCity}
-            onCityChange={handleCityChange}
-          />
+          <div className="city-selector-container">
+            <CitySelector 
+              currentCity={selectedCity}
+              onCityChange={handleCityChange}
+            />
+          </div>
         </div>
       </div>
       
-      {/* Hero image with overlayed search bar - FORCED VIEWPORT WIDTH AND TOP POSITION */}
+      {/* Hero image with overlayed search bar */}
       <div className="hero-full-bleed hero-section relative aspect-square overflow-hidden">
-        <img
-          src="/hero/hero0.jpg"
-          alt="Explore Hero"
-          className="object-cover w-full h-full block"
-          style={{ margin: 0, padding: 0, display: 'block' }}
-        />
-        {/* Dark gradient overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent"></div>
-        <div className="absolute inset-0 flex flex-col items-start justify-center px-2 sm:px-4 pt-8">
+        {/* Skeleton loader shown while image is loading */}
+        {!heroImageLoaded && (
+          <div className="skeleton-loader w-full h-full absolute inset-0"></div>
+        )}
+        
+        <div className="hero-container">
+          {heroImages.map((src, index) => (
+            <img
+              key={src}
+              src={src}
+              alt={`Explore Hero ${index + 1}`}
+              className={`object-cover hero-image ${currentHeroImageIndex === index && heroImageLoaded ? 'loaded' : ''}`}
+              style={{ margin: 0, padding: 0, display: 'block' }}
+              onLoad={() => currentHeroImageIndex === index && setHeroImageLoaded(true)}
+            />
+          ))}
+        </div>
+        
+        {/* Lighter gradient overlay for better text readability while keeping images bright */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent"></div>
+        <div className="absolute inset-0 flex flex-col items-start justify-center px-2 sm:px-4 pt-4">
           <div className="w-full max-w-md">
             <ExploreSearch 
               query={searchQuery} 
               onSearch={handleSearch} 
             />
-            <h2 className="text-white text-xl md:text-2xl font-bold mt-6 text-left pl-1 drop-shadow-md">
-              Your Next Experience Starts Here.
-            </h2>
+            <div className="mt-6 pl-1">
+              <h2 className="text-white text-xl md:text-3xl font-bold drop-shadow-lg" style={{ letterSpacing: '0.5px' }}>
+                <span className="text-white">Connecting through Shared Experience</span>
+              </h2>
+              <div className="h-1 w-20 bg-white rounded-full mt-2 opacity-80"></div>
+            </div>
           </div>
           
           {/* Tag filter overlaid at the very bottom of the hero */}
           <div className="absolute bottom-0 left-0 right-0 w-full">
-            <div className="tag-scroll-container w-full">
+            <div className="tag-scroll-container w-full" ref={tagScrollRef}>
               <TagFilter 
                 selectedTags={selectedTags}
                 onTagSelect={handleTagSelect}

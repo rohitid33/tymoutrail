@@ -40,6 +40,7 @@ import EventPage from './myevents/pages/EventPage';
 import EventChatPage from './myevents/pages/EventChatPage';
 import EventAboutPage from './myevents/pages/EventAboutPage';
 import JoinRequestsPage from './myevents/pages/JoinRequestsPage';
+import EventGroupPage from './myevents/pages/EventGroupPage';
 import './styles/App.css';
 
 // Following Single Responsibility Principle - App component only handles setup
@@ -65,8 +66,8 @@ const App = () => {
   }, [isAuthenticated]);
   
   const location = useLocation();
-  // Hide header on event chat pages and event detail pages
-  const isNoHeaderPage = /\/myevents\/[^/]+(\/chat)?$/.test(location.pathname);
+  // Hide header on event chat pages, event detail pages, and join requests page
+  const isNoHeaderPage = /\/myevents\/[^/]+(\/chat|\/requests)?$/.test(location.pathname);
   // Hide bottom nav only on event chat page
   const isEventChatPage = /\/myevents\/[^/]+\/chat$/.test(location.pathname);
   // Hide Footer on My Events page
@@ -148,6 +149,16 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <EventAboutPage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Event Group tabbed interface route */}
+            <Route 
+              path="/myevents/:eventId/group" 
+              element={
+                <ProtectedRoute>
+                  <EventGroupPage />
                 </ProtectedRoute>
               } 
             />
@@ -285,6 +296,8 @@ const App = () => {
         if (/^\/profile\/[^/]+$/.test(location.pathname)) return null;
         // Hide Footer on ProfilePage (/profile)
         if (location.pathname === '/profile') return null;
+        // Hide Footer on EventGroupPage
+        if (/^\/myevents\/[^/]+\/group$/.test(location.pathname)) return null;
         return <Footer />;
       })()}
 
