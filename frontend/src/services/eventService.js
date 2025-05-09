@@ -6,7 +6,6 @@
  * - Each function handles a specific operation related to events
  */
 import axios from 'axios';
-import { useAuthStore } from '../stores/authStore';
 
 const eventService = {
   /**
@@ -134,23 +133,15 @@ const eventService = {
    */
   joinEvent: async (eventId, userData) => {
     try {
-      // Get current user from auth store if available
-      const authState = useAuthStore.getState();
-      const currentUser = authState.user;
-      
       // Ensure we have a consistent user ID
-      const userId = currentUser?._id || localStorage.getItem('userId') || userData.userId || '1';
+      const userId = localStorage.getItem('userId') || userData.userId || '1';
       // Store it for future use
       localStorage.setItem('userId', userId);
       
-      // Get user's name from auth store if available
-      const userName = currentUser?.name || currentUser?.fullName || userData.name || 'Anonymous User';
-      
-      // Update userData with consistent ID and name
+      // Update userData with consistent ID
       const updatedUserData = {
         ...userData,
-        userId: userId,
-        name: userName
+        userId: userId
       };
       
       console.log('[eventService] Requesting to join event:', { eventId, userData: updatedUserData });

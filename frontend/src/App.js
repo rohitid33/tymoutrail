@@ -31,7 +31,6 @@ import TableCreationPage from './hosting/pages/TableCreationPage';
 import CircleCreationPage from './hosting/pages/CircleCreationPage';
 import BusinessListingPage from './hosting/pages/BusinessListingPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import PublicRoute from './components/auth/PublicRoute';
 import Header from './components/layout/Header';
 import { useLocation } from 'react-router-dom';
 import Footer from './components/layout/Footer';
@@ -81,7 +80,9 @@ const App = () => {
         <main className={`flex-1 p-2 md:p-4 pb-16 md:pb-0 ${isAuthenticated ? 'md:ml-64' : ''}`}> 
           <Routes>
             {/* Public routes */}
-            <Route path="/" element={<Navigate to="/explore" replace />} />
+            <Route path="/" element={
+              isAuthenticated ? <Navigate to="/explore" replace /> : <HomePage />
+            } />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/auth/success" element={<AuthSuccess />} />
@@ -106,9 +107,9 @@ const App = () => {
             <Route 
               path="/explore" 
               element={
-                <PublicRoute>
+                <ProtectedRoute>
                   <ExplorePage />
-                </PublicRoute>
+                </ProtectedRoute>
               } 
             />
             {/* MyEvents route */}
@@ -176,9 +177,9 @@ const App = () => {
             <Route 
               path="/events/:id" 
               element={
-                <PublicRoute>
+                <ProtectedRoute>
                   <EventDetailPage type="events" />
-                </PublicRoute>
+                </ProtectedRoute>
               } 
             />
             <Route 

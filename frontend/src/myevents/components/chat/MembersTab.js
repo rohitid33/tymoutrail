@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEventPendingRequests, useRemoveAttendee } from '../../hooks/queries/useMyEventsQueries';
 import { useAuthStore } from '../../../stores/authStore';
@@ -15,9 +15,6 @@ const MembersTab = ({ members = [], event }) => {
   const queryClient = useQueryClient();
   const [processingMember, setProcessingMember] = useState(null);
   const [localMembers, setLocalMembers] = useState(members);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [memberToRemove, setMemberToRemove] = useState(null);
-  const memberNameRef = useRef('');
   
   // Update local members when props change
   React.useEffect(() => {
@@ -63,58 +60,37 @@ const MembersTab = ({ members = [], event }) => {
     navigate(`/profile/${userId}`);
   };
   
-  // Show confirmation popup before removing member
-  const showRemoveConfirmation = (e, userId, memberName) => {
+  // Handle remove member
+  const handleRemoveMember = (e, userId) => {
     e.stopPropagation(); // Prevent profile navigation
     if (!userId || !event?._id) return;
     
-    // Store the member info for the confirmation dialog
-    setMemberToRemove(userId);
-    memberNameRef.current = memberName || 'this member';
-    setShowConfirmation(true);
-  };
-  
-  // Handle actual member removal after confirmation
-  const handleRemoveMember = () => {
-    if (!memberToRemove || !event?._id) return;
-    
-    setProcessingMember(memberToRemove);
+    setProcessingMember(userId);
     removeAttendee(
-      { eventId: event._id, userId: memberToRemove },
+      { eventId: event._id, userId },
       {
         onSuccess: () => {
           // Update local state immediately
           setLocalMembers(prevMembers => prevMembers.filter(member => {
             const memberId = member.userId || member.id;
-            return memberId !== memberToRemove;
+            return memberId !== userId;
           }));
           
           // Force refetch event members
           queryClient.invalidateQueries({ queryKey: ['eventMembers', event._id] });
           queryClient.invalidateQueries({ queryKey: ['eventDetails', event._id] });
           
-          // Reset state
           setProcessingMember(null);
-          setMemberToRemove(null);
-          setShowConfirmation(false);
         },
         onError: (error) => {
           console.error('Error removing member:', error);
           setProcessingMember(null);
-          setMemberToRemove(null);
-          setShowConfirmation(false);
         }
       }
     );
   };
-  
-  // Cancel member removal
-  const cancelRemoveMember = () => {
-    setMemberToRemove(null);
-    setShowConfirmation(false);
-  };
   return (
-  <div className="p-4 relative">
+  <div className="p-4">
     {/* Join Requests Link (only visible to host) */}
     {isHost && eventId && (
       <Link 
@@ -183,7 +159,7 @@ const MembersTab = ({ members = [], event }) => {
                 {/* Remove member button - only visible to host and not for the host's own entry */}
                 {isHost && userId !== user?._id && (
                   <button
-                    onClick={(e) => showRemoveConfirmation(e, userId, attendee.name || attendee.fullName || null)}
+                    onClick={(e) => handleRemoveMember(e, userId)}
                     disabled={processingMember === userId || isRemoving}
                     className="p-2 rounded-full text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Remove member"
@@ -210,35 +186,6 @@ const MembersTab = ({ members = [], event }) => {
           );
         })}
       </ul>
-    )}
-    
-    {/* Confirmation Dialog */}
-    {showConfirmation && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg p-5 max-w-md w-full">
-          <h3 className="text-lg font-medium text-gray-900 mb-3">Remove Member</h3>
-          <p className="text-gray-500 mb-4">
-            Are you sure you want to remove {memberNameRef.current} from this event? 
-            They will no longer have access to event details and chat.
-          </p>
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={cancelRemoveMember}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-              disabled={isRemoving}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleRemoveMember}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              disabled={isRemoving}
-            >
-              {isRemoving ? 'Removing...' : 'Remove'}
-            </button>
-          </div>
-        </div>
-      </div>
     )}
   </div>
 );

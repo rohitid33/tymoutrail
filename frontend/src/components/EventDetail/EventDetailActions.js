@@ -8,7 +8,7 @@ import { FaShare, FaCheck, FaCopy } from 'react-icons/fa';
  * Following the Single Responsibility Principle:
  * This component handles the action buttons and recommendation information
  */
-const EventDetailActions = ({ item, type, handleMainAction, isAuthenticated = true, isActionLoading = false }) => {
+const EventDetailActions = ({ item, type, handleMainAction }) => {
   // State to track if the user has requested to join or is already joined
   const [isJoined, setIsJoined] = useState(false);
   const [isRequested, setIsRequested] = useState(false);
@@ -146,40 +146,31 @@ const EventDetailActions = ({ item, type, handleMainAction, isAuthenticated = tr
         onClick={() => {
           // If not already joined or requested, handle the action
           if (!isJoined && !isRequested) {
-            // If user is authenticated, proceed with join request
-            if (isAuthenticated) {
-              // Immediately update both UI states before API call
-              setIsRequested(true);
-              setHasRequestedLocally(true); // Set our persistent local state
-              
-              // Store in localStorage for persistence across page reloads
-              const eventKey = `requested_${item.id}`;
-              localStorage.setItem(eventKey, 'true');
-            }
+            // Immediately update both UI states before API call
+            setIsRequested(true);
+            setHasRequestedLocally(true); // Set our persistent local state
             
-            // Then call the action handler (which will handle redirect to login if not authenticated)
+            // Store in localStorage for persistence across page reloads
+            const eventKey = `requested_${item.id}`;
+            localStorage.setItem(eventKey, 'true');
+            
+            // Then call the action handler
             handleMainAction();
-            console.log('[EventDetailActions] Request to join button clicked, isAuthenticated:', isAuthenticated);
+            console.log('[EventDetailActions] Request to join button clicked, setting isRequested=true and hasRequestedLocally=true');
           }
         }}
-        disabled={isJoined || isRequested || isActionLoading}
+        disabled={isJoined || isRequested}
         className={`w-full py-3 px-6 rounded-lg font-medium transition mt-4 ${isJoined 
           ? 'bg-green-600 text-white cursor-default' 
           : isRequested 
             ? 'bg-gray-400 text-white cursor-default' 
-            : isActionLoading
-              ? 'bg-indigo-400 text-white cursor-wait'
-              : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+            : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
       >
         {isJoined 
           ? 'Joined' 
           : isRequested 
             ? 'Requested' 
-            : isActionLoading
-              ? 'Processing...'
-              : isAuthenticated 
-                ? 'Request to Join' 
-                : 'Login to Join'}
+            : 'Request to Join'}
       </button>
       
       {/* Share Button */}
@@ -191,9 +182,7 @@ const EventDetailActions = ({ item, type, handleMainAction, isAuthenticated = tr
 EventDetailActions.propTypes = {
   item: PropTypes.object.isRequired,
   type: PropTypes.string.isRequired,
-  handleMainAction: PropTypes.func.isRequired,
-  isAuthenticated: PropTypes.bool,
-  isActionLoading: PropTypes.bool
+  handleMainAction: PropTypes.func.isRequired
 };
 
 // Share Button Component
