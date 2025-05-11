@@ -9,6 +9,7 @@ import ExploreSearch from '../components/explore/ExploreSearch';
 import ExploreResults from '../components/explore/ExploreResults';
 import TagFilter from '../components/explore/TagFilter';
 import CitySelector from '../components/explore/CitySelector';
+import SpotlightEvents from '../components/explore/SpotlightEvents';
 
 /**
  * ExplorePage Component
@@ -333,13 +334,13 @@ const ExplorePage = () => {
           position: relative !important;
           box-sizing: border-box !important;
           border-radius: 12px !important;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2) !important;
           overflow: hidden !important;
         }
         
         /* Base page resets */
-        body, html { margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; }
-        #root > div:first-of-type { padding-top: 0 !important; margin-top: 0 !important; }
+        body, html { margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; background-color: #FFFFFF !important; }
+        #root > div:first-of-type { padding-top: 0 !important; margin-top: 0 !important; background-color: #FFFFFF !important; }
         
         /* Horizontal scrolling for tag filter */
         .tag-scroll-container {
@@ -457,7 +458,7 @@ const ExplorePage = () => {
             />
             <div className="mt-6 pl-1">
               <h2 className="text-white text-xl md:text-3xl font-bold drop-shadow-lg" style={{ letterSpacing: '0.5px' }}>
-                <span className="text-white">Connecting through Shared Experience</span>
+                <span className="text-white">Meet Like-minded People!</span>
               </h2>
               <div className="h-1 w-20 bg-white rounded-full mt-2 opacity-80"></div>
             </div>
@@ -478,16 +479,24 @@ const ExplorePage = () => {
         </div>
       </div>
       {/* End hero + search */}
-      <div className="container w-full pt-0 pb-8 overflow-x-hidden max-w-full" ref={pageRef} style={{ margin: 0, padding: 0 }}>
+      <div className="container w-full pt-0 pb-8 overflow-x-hidden max-w-full" ref={pageRef} style={{ margin: 0, padding: 0, backgroundColor: '#FFFFFF' }}>
 
-      {/* Heading moved to hero image */}
+      {/* Spotlight section - horizontally scrollable 2x3 grid */}
+      {!isLoading && results && results.length > 0 && (
+        <div className="mt-4">
+          <SpotlightEvents 
+            events={results.filter(event => 
+              event.set_trending === 'in the spotlight'
+            )} 
+          />
+        </div>
+      )}
       
-      {/* Search is now only in the hero overlay */}
-      
-      {/* Tag filter moved to hero overlay */}
-      
-      {/* Content section */}
+      {/* Content section with heading */}
       <div className="mt-8">
+        <div className="flex items-center mb-4 px-4">
+          <h2 className="text-xl font-bold text-gray-800">Find Your Table</h2>
+        </div>
         <ExploreResults 
           results={results} 
           isLoading={isLoading}

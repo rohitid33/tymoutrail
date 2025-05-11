@@ -3,6 +3,7 @@ import ChatMessageBubble from './ChatMessageBubble';
 import TypingIndicator from './TypingIndicator';
 import { useChatSocket } from '../../hooks/useChatSocket';
 import './typing-indicator.css';
+import '../../../styles/chat-custom.css';
 
 const ChatMessageList = ({ messages: propMessages, currentUserId, eventId, onReplyTo, typingUsers = [] }) => {
   const { deleteMessage } = useChatSocket(eventId);
@@ -165,7 +166,7 @@ const ChatMessageList = ({ messages: propMessages, currentUserId, eventId, onRep
     <div
       ref={listRef}
       onScroll={handleScroll}
-      className="flex flex-col gap-2 w-full pb-16 overflow-y-auto flex-1 relative"
+      className="flex flex-col gap-2 w-full pb-16 overflow-y-auto flex-1 relative chat-scrollbar"
       style={{
         scrollPaddingBottom: '90px'
       }}
@@ -275,6 +276,7 @@ const ChatMessageList = ({ messages: propMessages, currentUserId, eventId, onRep
           </div>
         </div>
       )}
+      <div className="h-20 w-full flex-shrink-0 pb-16" id="chat-end-spacer" aria-hidden="true"></div>
     </div>
   );
 };

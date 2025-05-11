@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useOAuthVerification } from '../hooks/queries/useAuthQueries';
@@ -10,6 +10,7 @@ const LoginPage = () => {
   const oauthMutation = useOAuthVerification();
   const navigate = useNavigate();
   const location = useLocation();
+  const [message, setMessage] = useState('');
 
   // Check for token in URL (from Google OAuth callback)
   useEffect(() => {
@@ -32,6 +33,13 @@ const LoginPage = () => {
       });
     }
   }, [location, oauthMutation, handleOAuthVerification, navigate]);
+
+  // Check for message in location state
+  useEffect(() => {
+    if (location.state?.message) {
+      setMessage(location.state.message);
+    }
+  }, [location.state]);
 
   // Redirect if already authenticated
   useEffect(() => {
