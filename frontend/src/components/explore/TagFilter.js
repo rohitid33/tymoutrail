@@ -20,8 +20,8 @@ const TagFilter = ({ onTagSelect, selectedTags = [], onSpecialTagSelect, activeS
   
   // Popular tags used for filtering
   const availableTags = [
-    'All', 'Only For You', 'Food', 'Play', 'Create', 'Learn', 'Serve', 
-    'Socialize', 'Networking', 'Games', 'Adventure', 'Culture', 'Wellness'
+    'All', 'Only For You', 'Food', 'Play', 'Art', 'Learn', 'Serve', 
+    'Socialize', 'Travel', 'Culture', 'Wellness'
   ];
 
   // Handle single tag selection/deselection (single-select)
@@ -71,6 +71,12 @@ const TagFilter = ({ onTagSelect, selectedTags = [], onSpecialTagSelect, activeS
 
   return (
     <>
+      <style>{`
+        .backdrop-blur-sm {
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+        }
+      `}</style>
       {/* Only show regular tag filter section if not hiding regular tags */}
       {!hideRegularTags && (
         <div className="flex items-center w-full">
@@ -97,12 +103,17 @@ const TagFilter = ({ onTagSelect, selectedTags = [], onSpecialTagSelect, activeS
                 className={`
                   tag-item w-full px-5 py-3 text-lg font-medium transition-all duration-200 flex items-center justify-center border-none !ml-0 !mr-0
                   ${(selectedTags.includes(tag) || (tag === 'Only For You' && activeSpecialTag === 'Only For You') || (tag === 'All' && activeSpecialTag === 'All'))
-                    ? 'bg-white/30 text-white border-b-2 border-white rounded-t-lg' 
+                    ? 'bg-white/30 text-white border-b-2 border-white rounded-t-lg backdrop-blur-sm' 
                     : 'bg-transparent text-white hover:bg-white/20 hover:rounded-t-lg'}
                   ${tag === 'Only For You' && !isAuthenticated ? 'cursor-pointer text-white/80 hover:text-white' : ''}
                 `}
               >
-                {tag}
+                {/* Logos hidden for now - will be used later */
+                (
+                  <div className="flex items-center justify-center h-full">
+                    <span className="font-bold text-white">{tag}</span>
+                  </div>
+                )}
               </button>
             </div>
           ))}
