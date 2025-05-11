@@ -173,6 +173,24 @@ class EventService {
         console.log(`[Event Service] Added city filter for: ${query.city}`);
       }
       
+      // Handle gender filtering
+      if (query.gender && query.gender !== 'All') {
+        console.log(`[Event Service] Filtering by gender:`, query.gender);
+        
+        // Add gender filter - exact match for gender field
+        // Handle both new format ('Male', 'Female') and old format ('Only Male', 'Only Female')
+        if (query.gender === 'Male') {
+          filter.gender = { $in: ['Male', 'Only Male'] };
+        } else if (query.gender === 'Female') {
+          filter.gender = { $in: ['Female', 'Only Female'] };
+        } else {
+          filter.gender = query.gender;
+        }
+        
+        // For debugging
+        console.log(`[Event Service] Added gender filter for: ${query.gender}`);
+      }
+      
       console.log(`[Event Service] Final search filter:`, filter);
       
       // If no filters are specified, return all events

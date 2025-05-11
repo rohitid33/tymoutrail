@@ -46,6 +46,11 @@ const eventSchema = new mongoose.Schema({
     enum: ['Date Night', 'Food For thought'],
     default: 'Food For thought'
   },
+  gender: {
+    type: String,
+    enum: ['Male', 'Female', 'All'],
+    default: 'All'
+  },
   event_image: {
     type: String,
     trim: true
