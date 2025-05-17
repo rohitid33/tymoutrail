@@ -73,6 +73,74 @@ exports.createMessage = async (req, res) => {
   }
 };
 
+// Get chat preview (last message and unread count) for an event
+exports.getChatPreview = async (req, res) => {
+  const { eventId } = req.params;
+  const { userId } = req.query;
+  
+  if (!eventId || !userId) {
+    return res.status(400).json({ error: 'Event ID and User ID are required' });
+  }
+  
+  try {
+    const chat = await Message.findOne({ eventId });
+    if (!chat || !chat.messages || chat.messages.length === 0) {
+      return res.json({
+        lastMessage: null,
+        unreadCount: 0,
+        lastMessageTime: null,
+        lastSenderName: null
+      });
+    }
+    
+    // Sort messages by timestamp (newest first)
+    const sortedMessages = [...chat.messages]
+      .filter(msg => !msg.isDeleted) // Filter out deleted messages
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    // Get the last message
+    const lastMessage = sortedMessages[0];
+    
+    // Count unread messages (messages not sent by the user and not read by the user)
+    const unreadCount = sortedMessages.filter(msg => {
+      // Skip messages sent by this user
+      if (String(msg.senderId) === String(userId)) return false;
+      // Check if user has read this message
+      const hasRead = msg.readBy && msg.readBy.some(read => String(read.userId) === String(userId));
+      return !hasRead;
+    }).length;
+    
+    // Debug log for diagnosis
+    console.log('[getChatPreview] userId:', userId, 'eventId:', eventId, 'unreadCount:', unreadCount, 'lastMessage:', lastMessage && { senderId: lastMessage.senderId, text: lastMessage.text });
+    
+    // Truncate message text for preview (max 30 chars)
+    const truncateText = (text) => {
+      if (!text) return '';
+      return text.length > 30 ? text.substring(0, 27) + '...' : text;
+    };
+    
+    // Format the preview data
+    const previewData = {
+      lastMessage: {
+        text: lastMessage.text,
+        timestamp: lastMessage.timestamp,
+        senderId: lastMessage.senderId,
+        senderName: lastMessage.senderName
+      },
+      unreadCount,
+      lastMessageTime: lastMessage.timestamp,
+      lastSenderName: lastMessage.senderName,
+      previewText: truncateText(lastMessage.text),
+      isOwnMessage: lastMessage.senderId === userId
+    };
+    
+    res.json(previewData);
+  } catch (err) {
+    console.error('Error getting chat preview:', err);
+    res.status(500).json({ error: 'Failed to get chat preview' });
+  }
+};
+
 // Delete a message (soft delete by marking it as deleted)
 exports.deleteMessage = async (req, res) => {
   try {

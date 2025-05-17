@@ -43,6 +43,9 @@ function setupSocket(io) {
         io.to(eventId).emit('newMessage', savedMsg);
         // Notify sender only: message stored (single tick)
         socket.emit('sentAck', savedMsg);
+        
+        // Emit event to update unread counts for all clients
+        io.emit('unreadCountsChanged', { eventId, userId: senderId });
       } catch (err) {
         console.error(`[MessageService] Failed to save message for event ${eventId}:`, err);
       }
@@ -78,6 +81,61 @@ function setupSocket(io) {
       }
     });
 
+    // Handle mark messages as read event
+    socket.on('markAsRead', async ({ eventId, userId }) => {
+      if (!eventId || !userId) return;
+      try {
+        const chat = await Message.findOne({ eventId });
+        if (!chat) return;
+        
+        let updated = false;
+        
+        // Update participant's last seen time or add new participant
+        const now = new Date();
+        const participantIndex = chat.participants ? 
+          chat.participants.findIndex(p => p.userId === userId) : -1;
+          
+        if (participantIndex >= 0) {
+          // Update existing participant's last seen time
+          chat.participants[participantIndex].lastSeen = now;
+        } else {
+          // Add new participant
+          if (!chat.participants) chat.participants = [];
+          chat.participants.push({ userId, lastSeen: now });
+        }
+        
+        // Mark all messages as read for this user
+        chat.messages.forEach(msg => {
+          // Skip messages sent by this user and already read messages
+          if (msg.senderId === userId) return;
+          
+          // Check if user already read this message
+          const alreadyRead = msg.readBy && msg.readBy.some(read => read.userId === userId);
+          if (!alreadyRead) {
+            // Add user to readBy array
+            if (!msg.readBy) msg.readBy = [];
+            msg.readBy.push({ userId, readAt: new Date() });
+            updated = true;
+            
+            // Update status to read if all recipients have read it
+            if (msg.status !== 'read') {
+              msg.status = 'read';
+              // Broadcast status update to room
+              io.to(eventId).emit('statusUpdate', { messageId: msg._id, status: 'read' });
+            }
+          }
+        });
+        // Always update lastActivity and save
+        chat.lastActivity = new Date();
+        await chat.save();
+        // Always emit event to update unread counts
+        console.log(`[Socket] Emitting unreadCountsChanged for event ${eventId}, user ${userId}`);
+        io.emit('unreadCountsChanged', { eventId, userId });
+      } catch (err) {
+        console.error(`[MessageService] Failed to mark messages as read for event ${eventId}:`, err);
+      }
+    });
+    
     // Handle delivered acknowledgment from recipients
     socket.on('deliveredAck', async ({ eventId, messageId }) => {
       if (!eventId || !messageId) return;
