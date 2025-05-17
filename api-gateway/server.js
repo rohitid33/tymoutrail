@@ -11,7 +11,7 @@ dotenv.config({ path: '../.env' });
 
 // Following Single Responsibility Principle - server.js only handles server setup and routing
 const app = express();
-const PORT = process.env.API_GATEWAY_PORT || 3000;
+const PORT = process.env.PORT || process.env.API_GATEWAY_PORT || 3000;
 
 // Get service ports from environment variables
 const USER_SERVICE_PORT = process.env.USER_SERVICE_PORT || 3001;
@@ -73,6 +73,13 @@ app.use('/api/users', createProxyMiddleware({
     if (srcReq.body) {
       proxyReqOpts.headers['content-type'] = 'application/json';
     }
+    
+    // Forward Authorization header if present
+    if (srcReq.headers.authorization) {
+      console.log('[API Gateway] Forwarding Authorization header to User Service');
+      proxyReqOpts.headers['authorization'] = srcReq.headers.authorization;
+    }
+    
     return proxyReqOpts;
   },
   onProxyReq: (proxyReq, req, res) => {
@@ -260,7 +267,7 @@ app.use('/api/partnerships', createProxyMiddleware({
 }));
 
 // Health check endpoint
-app.use('/health', (req, res) => {
+app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'api-gateway' });
 });
 

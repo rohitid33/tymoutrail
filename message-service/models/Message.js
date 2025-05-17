@@ -14,18 +14,27 @@ const messageItemSchema = new mongoose.Schema({
   senderName: { type: String, required: true },
   senderAvatar: { type: String },
   text: { type: String, required: true },
-  status: { type: String, enum: ['sent', 'delivered'], default: 'sent' },
+  status: { type: String, enum: ['sent', 'delivered', 'read'], default: 'sent' },
   replyTo: replyToSchema,
   clientMsgId: { type: String, index: true },
   isDeleted: { type: Boolean, default: false },
   deletedAt: { type: Date },
-  timestamp: { type: Date, default: Date.now }
+  timestamp: { type: Date, default: Date.now },
+  readBy: [{ 
+    userId: { type: String },
+    readAt: { type: Date, default: Date.now }
+  }]
 });
 
 // Main schema for event messages
 const messageSchema = new mongoose.Schema({
   eventId: { type: String, required: true, unique: true },
-  messages: [messageItemSchema]
+  messages: [messageItemSchema],
+  lastActivity: { type: Date, default: Date.now },
+  participants: [{
+    userId: { type: String, required: true },
+    lastSeen: { type: Date, default: Date.now }
+  }]
 });
 
 module.exports = mongoose.model('Message', messageSchema);

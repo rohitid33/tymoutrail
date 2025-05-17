@@ -6,6 +6,7 @@ const { Server } = require('socket.io');
 require('dotenv').config();
 
 const messageRoutes = require('./routes/messageRoutes');
+const tagRoutes = require('./routes/tagRoutes');
 const setupSocket = require('./services/socketService');
 
 const app = express();
@@ -37,6 +38,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/messages', messageRoutes);
+app.use('/api/tags', tagRoutes);
 
 // Attach socket.io for real-time chat
 setupSocket(io);

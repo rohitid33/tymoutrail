@@ -9,6 +9,7 @@ const User = require('../models/User');
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'tymout_jwt_secret_key_change_in_production';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3010';
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL || 'http://localhost:3000';
 
 // @route   GET /auth/google
 // @desc    Authenticate with Google
@@ -21,7 +22,8 @@ router.get(
   },
   passport.authenticate('google', { 
     scope: ['profile', 'email'],
-    prompt: 'consent' 
+    prompt: 'select_account',
+    accessType: 'offline'
   })
 );
 
@@ -35,10 +37,24 @@ router.get(
     console.log('Query parameters:', req.query);
     next();
   },
-  passport.authenticate('google', { 
-    failureRedirect: `${FRONTEND_URL}/login?error=auth_failed`,
-    session: true
-  }),
+  (req, res, next) => {
+    // Custom error handler for Passport authentication
+    passport.authenticate('google', { session: false }, (err, user, info) => {
+      if (err) {
+        console.error('Google authentication error:', err);
+        return res.redirect(`${FRONTEND_URL}/login?error=auth_error&message=${encodeURIComponent(err.message)}`);
+      }
+      
+      if (!user) {
+        console.error('Authentication failed:', info);
+        return res.redirect(`${FRONTEND_URL}/login?error=auth_failed`);
+      }
+      
+      // Authentication successful, set user in request object
+      req.user = user;
+      next();
+    })(req, res, next);
+  },
   (req, res) => {
     try {
       console.log('Google auth callback successful');
@@ -49,17 +65,24 @@ router.get(
         return res.redirect(`${FRONTEND_URL}/login?error=no_user`);
       }
 
-      // Create JWT with user ID
+      // Create access token with user ID
       const token = jwt.sign(
-        { id: req.user.id },
+        { id: req.user.id, email: req.user.email, role: req.user.role },
         JWT_SECRET,
-        { expiresIn: '1d' }
+        { expiresIn: '24h' }
+      );
+      
+      // Create refresh token with longer expiration
+      const refreshToken = jwt.sign(
+        { id: req.user.id, tokenType: 'refresh' },
+        JWT_SECRET,
+        { expiresIn: '30d' }
       );
 
-      console.log('JWT token created, redirecting to frontend');
+      console.log('JWT tokens created, redirecting to frontend');
       
-      // Redirect to frontend with token
-      res.redirect(`${FRONTEND_URL}/auth/success?token=${token}`);
+      // Redirect to frontend with both tokens
+      res.redirect(`${FRONTEND_URL}/auth/success?token=${token}&refreshToken=${refreshToken}`);
     } catch (err) {
       console.error('Error in Google callback:', err);
       res.redirect(`${FRONTEND_URL}/login?error=server_error`);

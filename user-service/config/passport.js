@@ -31,9 +31,8 @@ const CALLBACK_URL = `${API_GATEWAY_URL}/api/users/auth/google/callback`;
 
 // Define authorized origins
 const AUTHORIZED_ORIGINS = [
-  `http://localhost:${API_GATEWAY_PORT}`,
-  FRONTEND_URL,
-  process.env.API_GATEWAY_URL
+  process.env.API_GATEWAY_URL || `http://localhost:${API_GATEWAY_PORT}`,
+  FRONTEND_URL
 ];
 
 // Serialize user for the session
@@ -60,9 +59,13 @@ passport.use(
       callbackURL: CALLBACK_URL,
       proxy: true,
       accessType: 'offline',
-      prompt: 'consent'
+      // Remove prompt from here as it's already in the auth route
+      // prompt: 'consent',
+      // Add these options to help with token issues
+      passReqToCallback: true,
+      userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo'
     },
-    async (accessToken, refreshToken, profile, done) => {
+    async (req, accessToken, refreshToken, profile, done) => {
       try {
         console.log('Google profile received:', profile.id);
         console.log('Google profile details:', {
